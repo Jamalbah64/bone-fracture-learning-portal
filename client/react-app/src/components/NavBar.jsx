@@ -1,4 +1,4 @@
-//This fiile is for the site's nav bar
+//This file is for the site's nav bar
 
 import React from 'react';
 import './NavBar.css';
