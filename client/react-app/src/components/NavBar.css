@@ -1,0 +1,22 @@
+/* This is the file for the Nav bar's styling */
+.navbar {
+    /*This style is for the nav bar container*/
+    background-color: #333;
+    overflow: hidden;
+}
+
+.navbar a {
+    /*This style is for the links in the nav bar*/
+    float: left;
+    display: block;
+    color: #f2f2f2;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+.navbar a:hover {
+    /*This style is for the hover effect on the links*/
+    background-color: #ddd;
+    color: black;
+}
