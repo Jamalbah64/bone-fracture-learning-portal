@@ -1,10 +1,15 @@
+:root {
+  --nav-h: 72px;
+}
+
+
 .nav {
   position: sticky;
   top: 0;
-  z-index: 50;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(11, 18, 32, 0.75);
+  z-index: 1000;
+  background: rgba(11, 18, 32, 0.95);
   backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
 }
 
 .nav-inner {
@@ -15,6 +20,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+  flex-wrap: wrap;
 }
 
 .brand {
@@ -85,3 +91,4 @@
     display: none; /* hides links on small screens (simple version) */
   }
 }
+
