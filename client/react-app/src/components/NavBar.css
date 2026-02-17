@@ -1,22 +1,87 @@
-/* This is the file for the Nav bar's styling */
-.navbar {
-    /*This style is for the nav bar container*/
-    background-color: #333;
-    overflow: hidden;
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(11, 18, 32, 0.75);
+  backdrop-filter: blur(10px);
 }
 
-.navbar a {
-    /*This style is for the links in the nav bar*/
-    float: left;
-    display: block;
-    color: #f2f2f2;
-    text-align: center;
-    padding: 14px 16px;
-    text-decoration: none;
+.nav-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
 }
 
-.navbar a:hover {
-    /*This style is for the hover effect on the links*/
-    background-color: #ddd;
-    color: black;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.brand-name {
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.brand-sub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.60);
+  margin-top: 1px;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.nav-link {
+  color: rgba(255, 255, 255, 0.78);
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.nav-login {
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.14);
+  color: rgba(255, 255, 255, 0.95);
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.2s ease;
+}
+
+.nav-login:hover {
+  transform: translateY(-1px);
+  background: rgba(56, 189, 248, 0.18);
+}
+
+@media (max-width: 720px) {
+  .nav-links {
+    display: none; /* hides links on small screens (simple version) */
+  }
 }

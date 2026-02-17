@@ -1,42 +1,286 @@
+/* ---------- Base Reset ---------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0b1220;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-2: rgba(255, 255, 255, 0.10);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.70);
+  --border: rgba(255, 255, 255, 0.12);
+
+  --primary: #38bdf8;
+  --primary-2: #60a5fa;
+
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  --radius: 18px;
+
+  /* fluid spacing */
+  --pad: clamp(14px, 3vw, 28px);
+  --max: 1100px;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+    "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+  color: var(--text);
+  background: radial-gradient(1000px 700px at 20% 10%, rgba(56, 189, 248, 0.25), transparent 55%),
+              radial-gradient(900px 600px at 80% 30%, rgba(96, 165, 250, 0.18), transparent 55%),
+              var(--bg);
+  overflow-x: hidden; /* prevents sideways scroll */
+}
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* A reusable responsive container */
+.container {
+  width: min(var(--max), 100% - (var(--pad) * 2));
+  margin-inline: auto;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+/* ---------- Layout ---------- */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  padding: calc(var(--pad) + 10px) 0 var(--pad);
+}
+
+.hero-grid {
+  display: grid;
+  gap: var(--pad);
+  grid-template-columns: 1.3fr 0.9fr;
+  align-items: start;
+}
+
+/* Auto stack when screen gets small */
+@media (max-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
   }
-  to {
-    transform: rotate(360deg);
+}
+
+.hero-content {
+  background: linear-gradient(180deg, var(--surface), transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  min-width: 0; /* prevents overflow in grid */
+}
+
+.pill {
+  display: inline-block;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 14px;
+}
+
+.hero h1 {
+  font-size: clamp(26px, 4vw, 44px);
+  line-height: 1.1;
+  margin-bottom: 12px;
+}
+
+.hero p {
+  color: var(--muted);
+  font-size: clamp(14px, 1.6vw, 16px);
+  line-height: 1.6;
+  margin-bottom: 18px;
+  max-width: 70ch;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 11px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.2s ease, border 0.2s ease;
+  min-height: 42px;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  background: var(--surface-2);
+}
+
+.btn:active {
+  transform: translateY(0px);
+}
+
+.btn-primary {
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: linear-gradient(
+    90deg,
+    rgba(56, 189, 248, 0.25),
+    rgba(96, 165, 250, 0.18)
+  );
+}
+
+.btn-secondary {
+  width: 100%;
+  margin-top: 14px;
+  border: 1px solid rgba(56, 189, 248, 0.30);
+  background: rgba(56, 189, 248, 0.10);
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+/* ---------- Stats ---------- */
+.stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 520px) {
+  .stats {
+    grid-template-columns: 1fr;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+.stat {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.stat-number {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ---------- Side Card ---------- */
+.hero-card {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius);
+  padding: var(--pad);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  min-width: 0; /* prevents overflow */
+}
+
+.hero-card h3 {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.hero-card ul {
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  color: var(--muted);
+  margin: 14px 0 6px;
+}
+
+/* ---------- Content ---------- */
+.content {
+  padding: var(--pad) 0 calc(var(--pad) + 20px);
+  flex: 1;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* This is the key: auto-resize cards */
+@media (max-width: 1000px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
   }
 }
 
 .card {
-  padding: 2em;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+  transition: transform 0.12s ease, background 0.2s ease;
+  min-width: 0;
 }
 
-.read-the-docs {
-  color: #888;
+.card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.card h3 {
+  margin-bottom: 8px;
+}
+
+.card p {
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+
+.link-btn {
+  border: none;
+  background: transparent;
+  color: rgba(56, 189, 248, 0.95);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 6px 0;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  padding: var(--pad) 0 calc(var(--pad) + 10px);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
 }
