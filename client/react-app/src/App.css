@@ -83,6 +83,7 @@ body {
   border-radius: var(--radius);
   padding: var(--pad);
   box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   min-width: 0;
 }
@@ -192,6 +193,7 @@ body {
   border-radius: var(--radius);
   padding: var(--pad);
   box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   min-width: 0;
 }
