@@ -3,7 +3,7 @@
 // This is the main App component that sets up routing and renders the NavBar and main content area. The actual pages (Home, Login, ChapterView, Dashboard) are defined in the pages directory.
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import ChapterView from './pages/ChapterView';
-import Dashboard from './pages/Dashboard';
+import Dashboard from './pages/dashboard';
 import Home from './pages/Home';
 import Login from './pages/Login';
 function App() {
