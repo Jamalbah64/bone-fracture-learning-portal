@@ -55,6 +55,19 @@ function NavBar() {
           </li>
           <li>
             <Link
+              to="/timeline"
+              className={
+                location.pathname.startsWith("/timeline") ||
+                location.pathname.startsWith("/patients")
+                  ? "nav-link active"
+                  : "nav-link"
+              }
+            >
+              Timeline
+            </Link>
+          </li>
+          <li>
+            <Link
               to="/settings"
               className={
                 location.pathname.startsWith("/settings")
