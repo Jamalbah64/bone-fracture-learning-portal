@@ -17,6 +17,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/upload" element={<XrayUpload />} />
+            <Route path="/timeline" element={<PatientTimeline />} />
             <Route path="/patients/:patientId" element={<PatientTimeline />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
