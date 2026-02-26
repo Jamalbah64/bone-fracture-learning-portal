@@ -29,21 +29,6 @@ function Dashboard() {
                 Browse Analytics
               </button>
             </div>
-
-            <div className="stats">
-              <div className="stat">
-                <div className="stat-number">AI</div>
-                <div className="stat-label">Fracture Detection</div>
-              </div>
-              <div className="stat">
-                <div className="stat-number">200+</div>
-                <div className="stat-label">Flashcards</div>
-              </div>
-              <div className="stat">
-                <div className="stat-number">12+</div>
-                <div className="stat-label">Chapters</div>
-              </div>
-            </div>
           </div>
 
           <div className="hero-card">
