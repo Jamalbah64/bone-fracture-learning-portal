@@ -14,21 +14,6 @@ function Dashboard() {
             <p>
               Quick Links:
             </p>
-
-            <div className="hero-actions">
-              <button
-                className="btn btn-primary"
-                onClick={() => navigate("/upload")}
-              >
-                Try AI Tool
-              </button>
-              <button
-                className="btn btn-ghost"
-                onClick={() => navigate("/analytics")}
-              >
-                Browse Analytics
-              </button>
-            </div>
           </div>
 
           <div className="hero-card">
