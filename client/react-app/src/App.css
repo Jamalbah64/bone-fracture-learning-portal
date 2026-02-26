@@ -24,7 +24,7 @@
 
 html,
 body {
-  /*overflow-x: hidden;*/
+    overflow-x: hidden;
   height: 100%;
   width: 100%;
 }
@@ -34,8 +34,8 @@ body {
     "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
   color: var(--text);
   background: radial-gradient(1000px 700px at 20% 10%, rgba(56, 189, 248, 0.25), transparent 55%),
-    radial-gradient(900px 600px at 80% 30%, rgba(96, 165, 250, 0.18), transparent 55%),
-    var(--bg);
+              radial-gradient(900px 600px at 80% 30%, rgba(96, 165, 250, 0.18), transparent 55%),
+              var(--bg);
   overflow-x: hidden;
 }
 
@@ -52,7 +52,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-
+ 
 }
 
 /* ---------- Hero ---------- */
@@ -60,10 +60,8 @@ body {
   padding: calc(var(--pad) + 10px) 0 var(--pad);
   scroll-margin-top: var(--nav-h);
 }
-
 .hero {
-  margin-top: 250px;
-  /* small breathing room under nav */
+  margin-top: 250px; /* small breathing room under nav */
 }
 
 .hero-grid {
@@ -141,9 +139,11 @@ body {
 
 .btn-primary {
   border: 1px solid rgba(56, 189, 248, 0.35);
-  background: linear-gradient(90deg,
-      rgba(56, 189, 248, 0.25),
-      rgba(96, 165, 250, 0.18));
+  background: linear-gradient(
+    90deg,
+    rgba(56, 189, 248, 0.25),
+    rgba(96, 165, 250, 0.18)
+  );
 }
 
 .btn-secondary {
@@ -263,8 +263,7 @@ body {
   background: rgba(255, 255, 255, 0.03);
   border-radius: var(--radius);
   padding: var(--pad);
-  padding-bottom: calc(var(--pad) + 20px);
-  /* ✅ extra bottom space */
+   padding-bottom: calc(var(--pad) + 20px); /* ✅ extra bottom space */
 }
 
 .ai-header h2 {
