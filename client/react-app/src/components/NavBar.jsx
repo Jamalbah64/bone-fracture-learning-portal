@@ -1,86 +1,103 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import "./NavBar.css";
 
 function NavBar() {
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const isActive = (path) => {
+    if (path === "/") return location.pathname === "/";
+    return location.pathname.startsWith(path);
+  };
 
   return (
     <nav className="nav">
-      <div className="nav-inner">
+      <div className="nav-inner container">
+        {/* Brand */}
         <Link
           to="/"
           className="brand"
-          style={{ textDecoration: "none", color: "inherit" }}
+          onClick={() => setMenuOpen(false)}
         >
           <div className="brand-mark">🦴</div>
           <div className="brand-text">
             <div className="brand-name">FractureDetection</div>
-            <div className="brand-sub">AI Fracture Detection + Learning</div>
+            <div className="brand-sub">
+              AI Fracture Detection + Learning
+            </div>
           </div>
         </Link>
 
-        <ul className="nav-links">
+        {/* Nav Links */}
+        <ul className={`nav-links ${menuOpen ? "open" : ""}`}>
           <li>
             <Link
               to="/"
-              className={
-                location.pathname === "/" ? "nav-link active" : "nav-link"
-              }
+              className={isActive("/") ? "nav-link active" : "nav-link"}
+              onClick={() => setMenuOpen(false)}
             >
               Dashboard
             </Link>
           </li>
+
           <li>
             <Link
               to="/upload"
-              className={
-                location.pathname === "/upload" ? "nav-link active" : "nav-link"
-              }
+              className={isActive("/upload") ? "nav-link active" : "nav-link"}
+              onClick={() => setMenuOpen(false)}
             >
               AI Tool
             </Link>
           </li>
+
           <li>
             <Link
               to="/analytics"
-              className={
-                location.pathname.startsWith("/analytics")
-                  ? "nav-link active"
-                  : "nav-link"
-              }
+              className={isActive("/analytics") ? "nav-link active" : "nav-link"}
+              onClick={() => setMenuOpen(false)}
             >
               Analytics
             </Link>
           </li>
+
           <li>
             <Link
               to="/timeline"
-              className={
-                location.pathname.startsWith("/timeline") ||
-                location.pathname.startsWith("/patients")
-                  ? "nav-link active"
-                  : "nav-link"
-              }
+              className={isActive("/timeline") || isActive("/patients")
+                ? "nav-link active"
+                : "nav-link"}
+              onClick={() => setMenuOpen(false)}
             >
               Timeline
             </Link>
           </li>
+
           <li>
             <Link
               to="/settings"
-              className={
-                location.pathname.startsWith("/settings")
-                  ? "nav-link active"
-                  : "nav-link"
-              }
+              className={isActive("/settings") ? "nav-link active" : "nav-link"}
+              onClick={() => setMenuOpen(false)}
             >
               Settings
             </Link>
           </li>
+
+          <li className="mobile-login">
+            <button className="nav-login">Login</button>
+          </li>
         </ul>
 
-        <button className="nav-login">Login</button>
+        {/* Desktop Login */}
+        <button className="nav-login desktop-only">Login</button>
+
+        {/* Hamburger */}
+        <div
+          className="hamburger"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          ☰
+        </div>
       </div>
     </nav>
   );
