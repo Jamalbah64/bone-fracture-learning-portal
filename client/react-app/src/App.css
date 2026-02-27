@@ -58,6 +58,12 @@ body {
   margin-inline: auto;
 }
 
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 /* ---------- Hero ---------- */
 .hero {
   padding: calc(var(--pad) + 10px) 0 var(--pad);
