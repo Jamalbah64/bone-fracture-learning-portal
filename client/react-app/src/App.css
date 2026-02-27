@@ -50,7 +50,10 @@ body {
   flex: 1;
   padding: var(--pad) 0 calc(var(--pad) + 20px);
   width: 100%;
+  display: flex;
+  justify-content: center;
 }
+
 
 /* Container auto scales */
 .container {
@@ -58,10 +61,8 @@ body {
   margin-inline: auto;
 }
 
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.container p {
+  margin-top: 1rem;   /* adjust to 1.5rem or 2rem if you want more space */
 }
 
 /* ---------- Hero ---------- */
@@ -70,14 +71,17 @@ body {
   scroll-margin-top: var(--nav-h);
 }
 .hero {
-  margin-top: 300px; /* small breathing room under nav */
+  margin-top: 10px; /* small breathing room under nav */
 }
 
 .hero-grid {
   display: grid;
-  gap: var(--pad);
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  align-items: start;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+}
+
+.hero-card li {
+  margin-left: 10px;   /* small shift right */
 }
 
 .hero-content,
@@ -90,6 +94,14 @@ body {
   backdrop-filter: blur(10px);
   min-width: 0;
 }
+
+@media (max-width: 768px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -188,16 +200,20 @@ body {
 }
 /* Upload Page Layout */
 .upload-page {
-  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
 }
 
 .upload-container {
+  width: 100%;
+  max-width: 1200px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 30px;
   align-items: start;
 }
-
 .upload-card {
   margin-top: 20px;
   display: grid;
@@ -229,12 +245,7 @@ body {
   border-radius: 12px;
 }
 
-/* Results */
-.result-row {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-}
+
 
 .confidence-bar {
   height: 10px;
@@ -315,4 +326,15 @@ body {
   color: rgba(255, 255, 255, 0.55);
   font-size: 13px;
   text-align: center;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    margin-top: 40px;
+  }
+
+  .upload-container,
+  .ai-grid {
+    grid-template-columns: 1fr;
+  }
 }
