@@ -1,15 +1,34 @@
-const express = require("express");
-const axios = require("axios");
+import express from "express";
+import axios from "axios";
+import "dotenv/config";
+
 const router = express.Router();
-require("dotenv").config();
+
+function decodeBase64Image(input) {
+  if (typeof input !== "string" || input.length === 0) return null;
+
+  // Supports either raw base64 or a full data URL.
+  const base64 = input.includes("base64,") ? input.split("base64,")[1] : input;
+
+  try {
+    return Buffer.from(base64, "base64");
+  } catch {
+    return null;
+  }
+}
 
 router.post("/", async (req, res) => {
   try {
-    const image = req.body.image; 
+    const imageBase64 = req.body?.imageBase64 ?? req.body?.image;
+    const imageBuffer = decodeBase64Image(imageBase64);
+
+    if (!imageBuffer) {
+      return res.status(400).json({ error: "Missing/invalid imageBase64" });
+    }
 
     const response = await axios.post(
       "https://api-inference.huggingface.co/models/Anwarkh1/Skin_Cancer-Image_Classification",
-      image,
+      imageBuffer,
       {
         headers: {
           Authorization: `Bearer ${process.env.HF_TOKEN}`,
@@ -18,11 +37,11 @@ router.post("/", async (req, res) => {
       }
     );
 
-    res.json(response.data);
+    return res.json(response.data);
   } catch (err) {
     console.error(err.response?.data || err.message);
-    res.status(500).json({ error: "Classification failed" });
+    return res.status(500).json({ error: "Classification failed" });
   }
 });
 
-module.exports = router;
+export default router;
