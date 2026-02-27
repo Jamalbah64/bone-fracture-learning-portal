@@ -20,4 +20,4 @@ function authMiddleware(req,res, next) {
     }
 }
 
-module.exxports = authMiddleware;
+module.exports = authMiddleware;
