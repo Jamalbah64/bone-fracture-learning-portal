@@ -35,7 +35,13 @@ router.post("/", async (req, res) => {
       provider: "hf-inference",
     });
 
-    return res.json(output);
+    const top = Array.isArray(output) && output.length > 0 ? output[0] : null;
+
+    return res.json({
+      label: top?.label ?? "Unknown",
+      confidence: top?.score ?? 0,
+      all: output,
+    });
   } catch (err) {
     console.error(err.response?.data || err.message || err);
     return res.status(500).json({ error: "Classification failed" });
