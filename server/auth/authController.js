@@ -14,7 +14,7 @@ async function register(req, res) {
         }
         await User.create({ username, password, role });
         res.status(201).json({ message: 'User created' });
-    } catch (err) {
+    } catch (err) { 
         console.error('Registration error:', err);
         res.status(500).json({ error: 'Server error' });
     }
