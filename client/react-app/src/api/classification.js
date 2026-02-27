@@ -25,7 +25,8 @@ function fileToBase64(file) {
 export async function classifyImage(file) {
   const imageBase64 = await fileToBase64(file);
 
-  const response = await fetch("http://localhost:5000/api/classify", {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+  const response = await fetch(`${apiBaseUrl}/api/classify`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
