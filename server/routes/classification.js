@@ -1,8 +1,9 @@
 import express from "express";
-import axios from "axios";
+import { InferenceClient } from "@huggingface/inference";
 import "dotenv/config";
 
 const router = express.Router();
+const client = new InferenceClient(process.env.HF_API_KEY);
 
 function decodeBase64Image(input) {
   if (typeof input !== "string" || input.length === 0) return null;
@@ -26,20 +27,17 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Missing/invalid imageBase64" });
     }
 
-    const response = await axios.post(
-      "https://api-inference.huggingface.co/models/Anwarkh1/Skin_Cancer-Image_Classification",
-      imageBuffer,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.HF_TOKEN}`,
-          "Content-Type": "application/octet-stream",
-        },
-      }
-    );
+    const imageBlob = new Blob([imageBuffer], { type: "image/jpeg" });
 
-    return res.json(response.data);
+    const output = await client.imageClassification({
+      data: imageBlob,
+      model: "wesleyacheng/dog-breeds-multiclass-image-classification-with-vit",
+      provider: "hf-inference",
+    });
+
+    return res.json(output);
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    console.error(err.response?.data || err.message || err);
     return res.status(500).json({ error: "Classification failed" });
   }
 });
