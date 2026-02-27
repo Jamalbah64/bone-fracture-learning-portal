@@ -8,13 +8,19 @@ import { useNavigate } from 'react-router-dom';
  * Collects username and password,
  * and redirects to the login page on success.
  */
+
+
 function Register() {
+    // function for handling user registration. 
+    // It sends a POST request to the server with the username and password, 
+    // and handles the response accordingly.  
     const navigate = useNavigate();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
+        // Prevent default form submission behavior
         e.preventDefault();
         setError('');
         try {
@@ -25,6 +31,7 @@ function Register() {
             });
             const data = await response.json();
             if (!response.ok) {
+                // If the response is not ok, set the error message from the response or a default message
                 setError(data.error || 'Registration failed');
                 return;
             }
