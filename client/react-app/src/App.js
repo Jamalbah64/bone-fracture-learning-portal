@@ -5,7 +5,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import ChapterView from './pages/ChapterView';
 import Dashboard from './pages/dashboard';
 import Home from './pages/Home';
-import Login from './pages/Login';
+import Login from './pages/loginPage';
+import Register from '.pages/registerPage';
 function App() {
     return (
         <BrowserRouter>
@@ -14,6 +15,7 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/chapter/:id" element={<ChapterView />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/register" element={<Register />} />
             </Routes>
         </BrowserRouter>
     );
