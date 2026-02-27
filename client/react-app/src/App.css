@@ -22,9 +22,15 @@
   --max: 1100px;
 }
 
+<<<<<<< HEAD
+html,
+body {
+  /*overflow-x: hidden;*/
+=======
 /* ---------- Global Layout ---------- */
 html, body, #root {
   overflow-x: hidden;
+>>>>>>> 3042eb011ce963aa0ec648f9978cd6df0d70a03f
   height: 100%;
   width: 100%;
 }
@@ -56,6 +62,12 @@ body {
 .container {
   width: min(var(--max), 100% - (var(--pad) * 2));
   margin-inline: auto;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ---------- Hero ---------- */
