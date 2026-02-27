@@ -90,6 +90,9 @@ body {
   cursor: pointer;
   transition: transform 0.12s ease, background 0.2s ease;
   min-height: 42px;
+  
+  margin-right: 8px;  /* horizontal spacing between buttons */
+  margin-top: 9px;   /* vertical spacing from elements above (like upload box) */
 }
 
 .btn:hover {
@@ -265,7 +268,7 @@ body {
 
 /* Upload Box */
 .upload-box {
-  margin-top: 14px;
+  margin-top: 24px; /* space above the box */
   border: 1px dashed rgba(255, 255, 255, 0.22);
   border-radius: 16px;
   padding: 16px;
