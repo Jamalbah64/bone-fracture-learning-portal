@@ -31,7 +31,7 @@ function Login() {
             // Save token and redirect to dashboard
             localStorage.setItem('token', data.token);
             navigate('/dashboard');
-        } catch (err) {
+        } catch {
             setError('An unexpected error occurred');
         }
     };

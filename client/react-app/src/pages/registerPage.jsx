@@ -30,7 +30,7 @@ function Register() {
             }
             // Redirect to login page after successful registration
             navigate('/login');
-        } catch (err) {
+        } catch {
             setError('An unexpected error occurred');
         }
     };
