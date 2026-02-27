@@ -71,7 +71,7 @@ body {
   scroll-margin-top: var(--nav-h);
 }
 .hero {
-  margin-top: 10px; /* small breathing room under nav */
+  margin-top: -15px; /* small breathing room under nav */
 }
 
 .hero-grid {
