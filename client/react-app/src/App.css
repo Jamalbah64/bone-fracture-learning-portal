@@ -60,7 +60,11 @@ body {
 
 /* ---------- Hero ---------- */
 .hero {
-  padding: var(--pad) 0;
+  padding: calc(var(--pad) + 10px) 0 var(--pad);
+  scroll-margin-top: var(--nav-h);
+}
+.hero {
+  margin-top: 300px; /* small breathing room under nav */
 }
 
 .hero-grid {
