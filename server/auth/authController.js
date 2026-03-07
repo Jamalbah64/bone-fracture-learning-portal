@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import User from "../models/Users.js";
+import User from "../models/index.js";
 
 
 export async function register(req, res) {
@@ -15,7 +15,7 @@ export async function register(req, res) {
         await User.create({ username, password, role });
         return res.status(201).json({ message: "User created" });
     } catch (err) {
-        console.error("Registration error:", err);
+        console.error("Registration error:", err && err.stack ? err.stack : err);
         return res.status(500).json({ error: "Server error" });
     }
 }
@@ -38,7 +38,23 @@ export async function login(req, res) {
 
         return res.json({ token });
     } catch (err) {
-        console.error("Login error:", err);
+        console.error("Login error:", err && err.stack ? err.stack : err);
+        return res.status(500).json({ error: "Server error" });
+    }
+}
+
+export async function me(req, res) {
+    try {
+        // auth middleware sets req.user from the token
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const user = await User.findOne({ _id: userId });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        return res.json({ id: user._id, username: user.username, role: user.role });
+    } catch (err) {
+        console.error("Me endpoint error:", err && err.stack ? err.stack : err);
         return res.status(500).json({ error: "Server error" });
     }
 }

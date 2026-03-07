@@ -1,10 +1,23 @@
-import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./NavBar.css";
 
-function NavBar() {
+function NavBar({ user }) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    // remove remember cookie
+    document.cookie = 'remember=; max-age=0; path=/';
+    // notify app to update state
+    try { window.dispatchEvent(new Event('auth-change')); }
+    catch { // ignore
+    }
+    navigate('/login');
+  }
 
   const isActive = (path) => {
     if (path === "/") return location.pathname === "/";
@@ -84,12 +97,15 @@ function NavBar() {
           </li>
 
           <li className="mobile-login">
-            <button className="nav-login">Login</button>
+            <button className="nav-login" onClick={handleLogout}>Logout</button>
           </li>
         </ul>
 
-        {/* Desktop Login */}
-        <button className="nav-login desktop-only">Login</button>
+        {/* Desktop Logout */}
+        <div className="nav-right">
+          {user && <div className="nav-user">{user.username}</div>}
+          <button className="nav-login desktop-only" onClick={handleLogout}>Logout</button>
+        </div>
 
         {/* Hamburger */}
         <div

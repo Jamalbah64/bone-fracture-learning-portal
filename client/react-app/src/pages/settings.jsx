@@ -1,7 +1,7 @@
 function Settings() {
   return (
     <section>
-       <div className="container">
+      <div className="container">
       <h1>Settings</h1>
       <p>
         This page will expose advanced options and default model settings for
