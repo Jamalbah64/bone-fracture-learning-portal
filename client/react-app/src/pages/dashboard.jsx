@@ -11,9 +11,7 @@ function Dashboard() {
           <div className="hero-content">
             <span className="pill">AI + Medical Learning</span>
             <h1>Bone Fracture Classification and Viewing</h1>
-            <p>
-              Quick Links:
-            </p>
+           
           </div>
 
           <div className="hero-card">
@@ -32,36 +30,6 @@ function Dashboard() {
           </div>
         </div>
       </header>
-
-      {/* MAIN FEATURE CARDS + AI PREVIEW */}
-      <section className="grid">
-        <div className="card">
-          <h3>AI Fracture Detection Tool</h3>
-          <p>
-            Upload an X-ray image and get an AI-assisted prediction with a
-            confidence score and highlighted region (coming soon).
-          </p>
-          <button className="link-btn" onClick={() => navigate("/upload")}>
-            Open AI Tool →
-          </button>
-        </div>
-
-        <div className="card">
-          <h3>Analytics</h3>
-          <p>Explore insights and metrics from your uploaded X-rays.</p>
-          <button className="link-btn" onClick={() => navigate("/analytics")}>
-            Open Analytics →
-          </button>
-        </div>
-
-        <div className="card">
-          <h3>Settings</h3>
-          <p>Adjust advanced settings and defaults for the AI tool.</p>
-          <button className="link-btn" onClick={() => navigate("/settings")}>
-            Open Settings →
-          </button>
-        </div>
-      </section>
 
       {/* AI TOOL PREVIEW SECTION */}
       <section className="ai-section">
