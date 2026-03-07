@@ -11,7 +11,7 @@ function Dashboard() {
           <div className="hero-content">
             <span className="pill">AI + Medical Learning</span>
             <h1>Bone Fracture Classification and Viewing</h1>
-           
+          
           </div>
 
           <div className="hero-card">
