@@ -11,4 +11,5 @@ Currently, our application uses a dummy model from huggingface.co. In order to u
 
 To start the application, run 'npm run dev' in the client/react-app directory, and 'node server.js' in the server directory
 
-
+Create an account, and then login to enter the site.
+Once in the site, click on the various tabs in the navbar to interact with the content.
