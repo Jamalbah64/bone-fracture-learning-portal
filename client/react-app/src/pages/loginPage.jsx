@@ -13,6 +13,7 @@ function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [remember, setRemember] = useState(false); //This is for the remember me checkbox
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -30,6 +31,21 @@ function Login() {
             }
             // Save token and redirect to dashboard
             localStorage.setItem('token', data.token);
+            // notify the app in this tab about the auth change
+            try {
+                window.dispatchEvent(new Event('auth-change'));
+            } catch {
+                // ignore
+            }
+            // If user chose "Remember me" create a persistent cookie.
+            // Deleted cookie means the login page will show next time.
+            if (remember) {
+                // cookie expires in 30 days
+                document.cookie = `remember=true; max-age=${60 * 60 * 24 * 30}; path=/`;
+            } else {
+                // ensure cookie is removed if previously set
+                document.cookie = `remember=; max-age=0; path=/`;
+            }
             navigate('/dashboard');
         } catch {
             setError('An unexpected error occurred');
@@ -63,6 +79,16 @@ function Login() {
                 {error && <p className="error">{error}</p>}
                 <button type="submit">Login</button>
             </form>
+            <div>
+                <label>
+                    <input
+                        type="checkbox"
+                        checked={remember}
+                        onChange={(e) => setRemember(e.target.checked)}
+                    />{' '}
+                    Remember me
+                </label>
+            </div>
             <p>
                 Don't have an account? <a href="/register">Register</a>
             </p>

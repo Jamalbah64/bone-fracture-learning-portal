@@ -1,14 +1,13 @@
 //Router for the login and registration endpoints
+import express from "express";
+import { login, register, me } from "./authController.js";
+import authMiddleware from "./middleware/auth.js";
 
-const express = require('express');
-const Router = express.Router();
-const {register, login} = require('./authController');
+const router = express.Router();
 
-//User registration route
+//routes for user registration and login.
+router.post("/register", register);
+router.post("/login", login);
+router.get("/me", authMiddleware, me);
 
-Router.post('/register', register);
-
-//User login route
-Router.post('/login', login);
-
-module.exports = Router;
+export default router;

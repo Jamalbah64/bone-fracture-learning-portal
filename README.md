@@ -1,6 +1,6 @@
 # FrACT - A Bone Fracture Detection/Classification GUI for patients and radiologists
 
-This is the repo for our capstone project: A learning portal based around bone fracture detection and classification. The bone we'll be using is 23r-M/2.1, better known as the metaphyseal, torus (buckle) fracture of the distal radius.  
+This is the repo for our capstone project: A learning portal based around bone fracture detection and classification. The bone we'll be using is 23r-M/2.1, better known as the metaphyseal, torus (buckle) fracture of the distal radius.
 
 Currently, our application uses a dummy model from huggingface.co. In order to use the model, do the following steps:
 1. Make an account on huggingface.co
