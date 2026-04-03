@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 import User from "../models/index.js";
 
 
-export async function register(req, res) {
-    try {
+export async function register(req, res) { // Endpoint for user registration
+    try { // Extract username, password, and role from the request body
         const { username, password, role } = req.body;
 
         const existing = await User.findOne({ username });

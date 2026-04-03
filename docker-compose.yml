@@ -1,0 +1,21 @@
+services:
+  server:
+    build:
+      context: ./server
+    container_name: FrACT-server
+    restart: always
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./server/.env
+    depends_on: []
+
+  client:
+    build:
+      context: ./client/react-app
+    container_name: FrACT-ui
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
