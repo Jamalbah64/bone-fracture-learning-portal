@@ -328,3 +328,84 @@ body {
   font-size: 13px;
   text-align: center;
 }
+
+@media (max-width: 768px) {
+  .hero {
+    margin-top: 40px;
+  }
+
+  .upload-container,
+  .ai-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Timeline Page ---------- */
+.timeline-page {
+  padding-top: 20px;
+}
+
+.patient-selector {
+  margin: 20px 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.patient-selector select {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05);
+  color: white;
+}
+
+/* Timeline layout */
+.timeline {
+  position: relative;
+  margin-top: 30px;
+  padding-left: 20px;
+  border-left: 2px solid rgba(255,255,255,0.15);
+}
+
+/* Each item */
+.timeline-item {
+  position: relative;
+  margin-bottom: 30px;
+  padding-left: 20px;
+}
+
+/* Dot */
+.timeline-dot {
+  position: absolute;
+  left: -11px;
+  top: 5px;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(90deg, #38bdf8, #60a5fa);
+  border-radius: 50%;
+}
+
+/* Content */
+.timeline-content {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: var(--radius);
+}
+
+.timeline-date {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .timeline {
+    padding-left: 10px;
+  }
+
+  .timeline-item {
+    padding-left: 15px;
+  }
+}

@@ -1,36 +1,56 @@
 import { useState } from "react";
-import { classifyImage } from "../api/classification";
+import { classifyImage } from "../api/classification"; 
 
 function XrayUpload() {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [patientId, setPatientId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [message, setMessage] = useState("");
 
   const onPickFile = (e) => {
     const picked = e.target.files?.[0] ?? null;
     setFile(picked);
     setError("");
     setResult(null);
+    setMessage("");
 
-    if (picked) {
-      setPreview(URL.createObjectURL(picked));
-    } else {
-      setPreview(null);
-    }
+    if (picked) setPreview(URL.createObjectURL(picked));
+    else setPreview(null);
   };
 
   const onRun = async () => {
-    if (!file) return;
+    if (!file || !patientId) {
+      setError("Please provide a patient ID and select a file.");
+      return;
+    }
 
     setIsLoading(true);
     setError("");
     setResult(null);
 
     try {
-      const data = await classifyImage(file);
+      const data = await classifyImage(file); // Run AI model
       setResult(data);
+
+      // Save to timeline after successful AI result
+      const timelineData = JSON.parse(localStorage.getItem("timelineData")) || {};
+      if (!timelineData[patientId]) timelineData[patientId] = [];
+
+      timelineData[patientId].push({
+        date: new Date().toISOString().split("T")[0],
+        event: "X-ray Uploaded",
+        filename: file.name,
+        result: data.label ?? "Unknown",
+        confidence: data.confidence ?? null,
+      });
+
+      localStorage.setItem("timelineData", JSON.stringify(timelineData));
+      setMessage("Analysis complete! Event saved to timeline.");
+      setFile(null);
+      setPreview(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Classification failed");
     } finally {
@@ -43,12 +63,16 @@ function XrayUpload() {
       <div className="upload-container">
         <div className="upload-left">
           <h1>AI Fracture Detection</h1>
-          <p>
-            Upload a medical X-ray image. Our AI model will analyze and detect
-            possible bone fractures.
-          </p>
+          <p>Upload a medical X-ray image. The AI model must run to save the result to the patient timeline.</p>
 
           <div className="upload-card">
+            <input
+              type="text"
+              placeholder="Enter Patient ID"
+              value={patientId}
+              onChange={(e) => setPatientId(e.target.value)}
+            />
+
             <input type="file" accept="image/*" onChange={onPickFile} />
 
             <button
@@ -61,6 +85,7 @@ function XrayUpload() {
             </button>
 
             {error && <div className="error-box">{error}</div>}
+            {message && <div style={{ color: "#38bdf8", marginTop: 10 }}>{message}</div>}
           </div>
         </div>
 
@@ -72,24 +97,13 @@ function XrayUpload() {
             </div>
           )}
 
-          {isLoading && (
-            <div className="result-card loading">
-              <div className="spinner"></div>
-              <p>Running AI model...</p>
-            </div>
-          )}
-
           {result && (
             <div className="result-card">
               <h3>Analysis Result</h3>
-
               <div className="result-row">
                 <span>Prediction:</span>
-                <strong>
-                  {result.label ?? "Unknown"}
-                </strong>
+                <strong>{result.label ?? "Unknown"}</strong>
               </div>
-
               <div className="result-row">
                 <span>Confidence:</span>
                 <strong>
@@ -98,15 +112,10 @@ function XrayUpload() {
                     : "N/A"}
                 </strong>
               </div>
-
               <div className="confidence-bar">
                 <div
                   className="confidence-fill"
-                  style={{
-                    width: result.confidence
-                      ? `${result.confidence * 100}%`
-                      : "0%",
-                  }}
+                  style={{ width: result.confidence ? `${result.confidence * 100}%` : "0%" }}
                 />
               </div>
             </div>
