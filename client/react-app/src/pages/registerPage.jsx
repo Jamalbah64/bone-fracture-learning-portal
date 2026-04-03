@@ -1,79 +1,94 @@
-// This is the register page for the user authentication system
-
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 /**
- * Registration page component.
- * Collects username and password,
- * and redirects to the login page on success.
+ * Register Component
+ * Handles user account creation.
+ * Sends username + password to backend.
  */
-
-
 function Register() {
-    // function for handling user registration. 
-    // It sends a POST request to the server with the username and password, 
-    // and handles the response accordingly.  
-    const navigate = useNavigate();
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-    const handleSubmit = async (e) => {
-        // Prevent default form submission behavior
-        e.preventDefault();
-        setError('');
-        try {
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: username, password }),
-            });
-            const data = await response.json();
-            if (!response.ok) {
-                // If the response is not ok, set the error message from the response or a default message
-                setError(data.error || 'Registration failed');
-                return;
-            }
-            // Redirect to login page after successful registration
-            navigate('/login');
-        } catch (err) {
-            setError(err?.message || 'An unexpected error occurred');
-        }
-    };
+  // Form input state
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
-    return (
-        <div className="auth-container">
-            <h2>Register</h2>
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label htmlFor="username">Username:</label>
-                    <input
-                        type="text"
-                        id="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                    />
-                </div>
-                <div>
-                    <label htmlFor="password">Password:</label>
-                    <input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                </div>
-                {error && <p className="error">{error}</p>}
-                <button type="submit">Register</button>
-            </form>
-            <p>
-                Already have an account? <Link to="/login">Login</Link>
-            </p>
-        </div>
-    );
+  // Error handling state
+  const [error, setError] = useState("");
+
+  /**
+   * Handles registration form submission
+   */
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      // Send registration request
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      // Handle failed registration
+      if (!response.ok) {
+        setError(data.error || "Registration failed");
+        return;
+      }
+
+      // Redirect to login after success
+      navigate("/login");
+    } catch (err) {
+      setError(err?.message || "An unexpected error occurred");
+    }
+  };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        {/* Page title */}
+        <h2>Create Account</h2>
+        <p className="muted">Sign up to get started</p>
+
+        {/* Registration Form */}
+        <form onSubmit={handleSubmit} className="auth-form">
+          {/* Username Input */}
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+
+          {/* Password Input */}
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          {/* Error Message */}
+          {error && <div className="error-box">{error}</div>}
+
+          {/* Submit Button */}
+          <button className="btn btn-primary" type="submit">
+            Register
+          </button>
+        </form>
+
+        {/* Link to Login Page */}
+        <p className="auth-switch">
+          Already have an account? <Link to="/login">Login</Link>
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default Register;

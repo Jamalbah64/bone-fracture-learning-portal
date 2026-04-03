@@ -409,3 +409,73 @@ body {
     padding-left: 15px;
   }
 }
+
+
+/* ---------- Auth Pages ---------- */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Card */
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 30px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+}
+
+/* Title */
+.auth-card h2 {
+  margin-bottom: 6px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+/* Inputs */
+.auth-form input {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  outline: none;
+}
+
+.auth-form input:focus {
+  border-color: var(--primary);
+}
+
+/* Options row */
+.auth-options {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+/* Switch text */
+.auth-switch {
+  margin-top: 16px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.auth-switch a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
