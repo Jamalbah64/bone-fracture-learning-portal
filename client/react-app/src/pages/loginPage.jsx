@@ -43,6 +43,12 @@ function Login() {
 
       // Save authentication token locally
       localStorage.setItem("token", data.token);
+      // Sync App.jsx token state (localStorage alone does not update React state)
+      try {
+        window.dispatchEvent(new Event("auth-change"));
+      } catch {
+        /* ignore */
+      }
 
       /**
        * Optional "Remember Me" feature
