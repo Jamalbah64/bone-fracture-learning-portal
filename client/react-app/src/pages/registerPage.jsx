@@ -1,7 +1,7 @@
 // This is the register page for the user authentication system
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 /**
  * Registration page component.
@@ -37,8 +37,8 @@ function Register() {
             }
             // Redirect to login page after successful registration
             navigate('/login');
-        } catch {
-            setError('An unexpected error occurred');
+        } catch (err) {
+            setError(err?.message || 'An unexpected error occurred');
         }
     };
 
@@ -70,7 +70,7 @@ function Register() {
                 <button type="submit">Register</button>
             </form>
             <p>
-                Already have an account? <a href="/login">Login</a>
+                Already have an account? <Link to="/login">Login</Link>
             </p>
         </div>
     );
