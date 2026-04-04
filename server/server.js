@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 import authRoutes from "./auth/authRoutes.js";
 import authMiddleware from "./auth/middleware/auth.js";
 import requireRole from "./auth/middleware/requireRole.js";
-// import classificationRoute from "./routes/classification.js";
+import classificationRoute from "./routes/classification.js";
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 4000);
@@ -22,7 +22,7 @@ app.use(
     "/api/classify",
     authMiddleware,
     requireRole("clinician", "admin"),
-    // classificationRoute
+    classificationRoute
 );
 
 // Patient-access route

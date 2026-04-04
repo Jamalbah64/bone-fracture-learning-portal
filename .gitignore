@@ -4,3 +4,7 @@ node_modules
 dist
 .mailmap
 
+venv/
+.venv/
+env/
+ENV/

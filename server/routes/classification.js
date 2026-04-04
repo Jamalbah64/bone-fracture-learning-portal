@@ -1,5 +1,6 @@
-import express from "express";
+// This is the route handler for the X-Ray classifcation endpoint.
 import "dotenv/config";
+import express from "express";
 
 const router = express.Router();
 const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
