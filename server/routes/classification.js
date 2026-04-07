@@ -1,42 +1,34 @@
 import express from "express";
-import { InferenceClient } from "@huggingface/inference";
 import "dotenv/config";
 
 const router = express.Router();
-const client = new InferenceClient(process.env.HF_API_KEY);
-
-function decodeBase64Image(input) {
-  if (typeof input !== "string" || input.length === 0) return null;
-
-  // Supports either raw base64 or a full data URL.
-  const base64 = input.includes("base64,") ? input.split("base64,")[1] : input;
-
-  try {
-    return Buffer.from(base64, "base64");
-  } catch {
-    return null;
-  }
-}
+const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
 
 router.post("/", async (req, res) => {
   try {
-    const imageBase64 = req.body?.imageBase64 ?? req.body?.image;
-    const imageBuffer = decodeBase64Image(imageBase64);
+    const { filestem } = req.body;
 
-    if (!imageBuffer) {
-      return res.status(400).json({ error: "Missing/invalid imageBase64" });
+    if (!filestem || typeof filestem !== "string") {
+      return res.status(400).json({ error: "Missing or invalid filestem" });
     }
 
-    const imageBlob = new Blob([imageBuffer], { type: "image/jpeg" });
-
-    const output = await client.imageClassification({
-      data: imageBlob,
-      model: "google/vit-base-patch16-224",
+    const response = await fetch(`${FASTAPI_URL}/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filestem }),
     });
 
-    return res.json(output);
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: data.detail || "Prediction failed",
+      });
+    }
+
+    return res.json(data);
   } catch (err) {
-    console.error(err.response?.data || err.message || err);
+    console.error(err.message || err);
     return res.status(500).json({ error: "Classification failed" });
   }
 });

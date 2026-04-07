@@ -1,29 +1,17 @@
 import { useState } from "react";
-import { classifyImage } from "../api/classification"; 
+import { classifyImage } from "../api/classification";
 
 function XrayUpload() {
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [filestem, setFilestem] = useState("");
   const [patientId, setPatientId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [message, setMessage] = useState("");
 
-  const onPickFile = (e) => {
-    const picked = e.target.files?.[0] ?? null;
-    setFile(picked);
-    setError("");
-    setResult(null);
-    setMessage("");
-
-    if (picked) setPreview(URL.createObjectURL(picked));
-    else setPreview(null);
-  };
-
   const onRun = async () => {
-    if (!file || !patientId) {
-      setError("Please provide a patient ID and select a file.");
+    if (!filestem.trim() || !patientId.trim()) {
+      setError("Please provide a patient ID and an image filestem.");
       return;
     }
 
@@ -32,25 +20,23 @@ function XrayUpload() {
     setResult(null);
 
     try {
-      const data = await classifyImage(file); // Run AI model
+      const data = await classifyImage(filestem.trim());
       setResult(data);
 
-      // Save to timeline after successful AI result
+      const topPrediction = data.predictions?.[0];
       const timelineData = JSON.parse(localStorage.getItem("timelineData")) || {};
       if (!timelineData[patientId]) timelineData[patientId] = [];
 
       timelineData[patientId].push({
         date: new Date().toISOString().split("T")[0],
-        event: "X-ray Uploaded",
-        filename: file.name,
-        result: data.label ?? "Unknown",
-        confidence: data.confidence ?? null,
+        event: "X-ray Analyzed",
+        filename: data.filestem,
+        result: topPrediction?.code ?? "Unknown",
+        confidence: topPrediction?.confidence ?? null,
       });
 
       localStorage.setItem("timelineData", JSON.stringify(timelineData));
       setMessage("Analysis complete! Event saved to timeline.");
-      setFile(null);
-      setPreview(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Classification failed");
     } finally {
@@ -63,7 +49,10 @@ function XrayUpload() {
       <div className="upload-container">
         <div className="upload-left">
           <h1>AI Fracture Detection</h1>
-          <p>Upload a medical X-ray image. The AI model must run to save the result to the patient timeline.</p>
+          <p>
+            Enter an X-ray image filestem from the dataset to classify it.
+            The AI model must run to save the result to the patient timeline.
+          </p>
 
           <div className="upload-card">
             <input
@@ -73,13 +62,23 @@ function XrayUpload() {
               onChange={(e) => setPatientId(e.target.value)}
             />
 
-            <input type="file" accept="image/*" onChange={onPickFile} />
+            <input
+              type="text"
+              placeholder="Enter image filestem (e.g. 0001_1297860395_01_WRI-L1_M014)"
+              value={filestem}
+              onChange={(e) => {
+                setFilestem(e.target.value);
+                setError("");
+                setResult(null);
+                setMessage("");
+              }}
+            />
 
             <button
               className="btn btn-primary"
               type="button"
               onClick={onRun}
-              disabled={!file || isLoading}
+              disabled={!filestem.trim() || isLoading}
             >
               {isLoading ? "Analyzing..." : "Run Analysis"}
             </button>
@@ -90,34 +89,42 @@ function XrayUpload() {
         </div>
 
         <div className="upload-right">
-          {preview && (
-            <div className="preview-card">
-              <h3>X-ray Preview</h3>
-              <img src={preview} alt="preview" />
-            </div>
-          )}
-
           {result && (
             <div className="result-card">
               <h3>Analysis Result</h3>
               <div className="result-row">
-                <span>Prediction:</span>
-                <strong>{result.label ?? "Unknown"}</strong>
+                <span>Filestem:</span>
+                <strong>{result.filestem}</strong>
               </div>
               <div className="result-row">
-                <span>Confidence:</span>
-                <strong>
-                  {result.confidence
-                    ? `${(result.confidence * 100).toFixed(1)}%`
-                    : "N/A"}
-                </strong>
+                <span>Classifications found:</span>
+                <strong>{result.num_labels}</strong>
               </div>
-              <div className="confidence-bar">
-                <div
-                  className="confidence-fill"
-                  style={{ width: result.confidence ? `${result.confidence * 100}%` : "0%" }}
-                />
-              </div>
+
+              {result.predictions?.map((pred, i) => (
+                <div key={i} style={{ marginTop: 12 }}>
+                  <div className="result-row">
+                    <span>AO Code:</span>
+                    <strong>{pred.code}</strong>
+                  </div>
+                  <div className="result-row">
+                    <span>Confidence:</span>
+                    <strong>{(pred.confidence * 100).toFixed(1)}%</strong>
+                  </div>
+                  <div className="confidence-bar">
+                    <div
+                      className="confidence-fill"
+                      style={{ width: `${pred.confidence * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {result.num_labels === 0 && (
+                <p style={{ color: "#94a3b8", marginTop: 10 }}>
+                  No fracture classifications found for this image.
+                </p>
+              )}
             </div>
           )}
         </div>

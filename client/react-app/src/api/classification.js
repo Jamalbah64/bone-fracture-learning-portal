@@ -1,37 +1,9 @@
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result !== "string") {
-        reject(new Error("Unexpected FileReader result type"));
-        return;
-      }
-
-      // result is a data URL: "data:<mime>;base64,<data>"
-      const base64 = result.includes("base64,") ? result.split("base64,")[1] : "";
-      if (!base64) {
-        reject(new Error("Failed to extract base64 from data URL"));
-        return;
-      }
-
-      resolve(base64);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-export async function classifyImage(file) {
-  const imageBase64 = await fileToBase64(file);
-
+export async function classifyImage(filestem) {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
   const response = await fetch(`${apiBaseUrl}/api/classify`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ imageBase64 }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filestem }),
   });
 
   const data = await response.json();
