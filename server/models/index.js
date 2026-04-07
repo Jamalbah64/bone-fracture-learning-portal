@@ -39,10 +39,13 @@ const LocalUser = {
         if (query.username) {
             return users.find(u => u.username === query.username) || null;
         }
+        if (query.staffId) {
+            return users.find(u => String(u.staffId || '') === String(query.staffId)) || null;
+        }
         return null;
     },
 
-    async create({ username, password, role }) {
+    async create({ username, password, role, staffId }) {
         const users = await readUsers();
         if (users.find(u => u.username === username)) {
             const err = new Error('Username already in use');
@@ -53,7 +56,7 @@ const LocalUser = {
         const salt = await bcrypt.genSalt(10); //Salt added to passwords to ensure they're unique even if two users have the same password
         const hashed = await bcrypt.hash(password, salt); // Added hashing to password to ensure security of user in case of data breach
         const id = Date.now().toString(36) + Math.floor(Math.random() * 36 ** 4).toString(36); // Generate a unique ID for the user
-        const user = { _id: id, username, password: hashed, role }; // Create user object with hashed password and unique ID
+        const user = { _id: id, username, password: hashed, role, staffId }; // Create user object with hashed password and unique ID
         users.push(user);
         await writeUsers(users);
         return user;
