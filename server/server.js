@@ -11,6 +11,8 @@ import classificationRoute from "./routes/classification.js";
 const app = express();
 const PORT = Number(process.env.PORT ?? 4000);
 
+console.log(process.env.MONGO_URI); // Debug log to verify MONGO_URI is loaded
+
 app.use(cors());
 app.use(express.json({ limit: "25mb" }));
 

@@ -10,7 +10,10 @@ function XrayUpload() {
   const [message, setMessage] = useState("");
 
   const onRun = async () => {
-    if (!filestem.trim() || !patientId.trim()) {
+    const trimmedFilestem = filestem.trim();
+    const trimmedPatientId = patientId.trim();
+
+    if (!trimmedFilestem || !trimmedPatientId) {
       setError("Please provide a patient ID and an image filestem.");
       return;
     }
@@ -18,16 +21,36 @@ function XrayUpload() {
     setIsLoading(true);
     setError("");
     setResult(null);
+    setMessage("");
 
     try {
-      const data = await classifyImage(filestem.trim());
+      const data = await classifyImage(trimmedFilestem);
+
+      const datasetPatientId =
+        data.patient_id !== null && data.patient_id !== undefined
+          ? String(data.patient_id).trim()
+          : "";
+
+      if (!datasetPatientId) {
+        throw new Error("No patient_id was found for that filestem in the dataset.");
+      }
+
+      if (trimmedPatientId !== datasetPatientId) {
+        throw new Error(
+          `Patient ID mismatch. You entered "${trimmedPatientId}", but this filestem belongs to patient "${datasetPatientId}".`
+        );
+      }
+
       setResult(data);
 
       const topPrediction = data.predictions?.[0];
       const timelineData = JSON.parse(localStorage.getItem("timelineData")) || {};
-      if (!timelineData[patientId]) timelineData[patientId] = [];
 
-      timelineData[patientId].push({
+      if (!timelineData[trimmedPatientId]) {
+        timelineData[trimmedPatientId] = [];
+      }
+
+      timelineData[trimmedPatientId].push({
         date: new Date().toISOString().split("T")[0],
         event: "X-ray Analyzed",
         filename: data.filestem,
@@ -50,8 +73,8 @@ function XrayUpload() {
         <div className="upload-left">
           <h1>AI Fracture Detection</h1>
           <p>
-            Enter an X-ray image filestem from the dataset to classify it.
-            The AI model must run to save the result to the patient timeline.
+            Enter a patient ID and an X-ray image filestem from the dataset.
+            The entered patient ID must match the dataset record for that image.
           </p>
 
           <div className="upload-card">
@@ -59,7 +82,11 @@ function XrayUpload() {
               type="text"
               placeholder="Enter Patient ID"
               value={patientId}
-              onChange={(e) => setPatientId(e.target.value)}
+              onChange={(e) => {
+                setPatientId(e.target.value);
+                setError("");
+                setMessage("");
+              }}
             />
 
             <input
@@ -78,13 +105,17 @@ function XrayUpload() {
               className="btn btn-primary"
               type="button"
               onClick={onRun}
-              disabled={!filestem.trim() || isLoading}
+              disabled={!filestem.trim() || !patientId.trim() || isLoading}
             >
               {isLoading ? "Analyzing..." : "Run Analysis"}
             </button>
 
             {error && <div className="error-box">{error}</div>}
-            {message && <div style={{ color: "#38bdf8", marginTop: 10 }}>{message}</div>}
+            {message && (
+              <div style={{ color: "#38bdf8", marginTop: 10 }}>
+                {message}
+              </div>
+            )}
           </div>
         </div>
 
@@ -95,6 +126,10 @@ function XrayUpload() {
               <div className="result-row">
                 <span>Filestem:</span>
                 <strong>{result.filestem}</strong>
+              </div>
+              <div className="result-row">
+                <span>Patient ID:</span>
+                <strong>{result.patient_id ?? "Not found"}</strong>
               </div>
               <div className="result-row">
                 <span>Classifications found:</span>

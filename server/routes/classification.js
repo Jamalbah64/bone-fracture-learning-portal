@@ -1,4 +1,3 @@
-// This is the route handler for the X-Ray classifcation endpoint.
 import "dotenv/config";
 import express from "express";
 
@@ -16,7 +15,7 @@ router.post("/", async (req, res) => {
     const response = await fetch(`${FASTAPI_URL}/predict`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filestem }),
+      body: JSON.stringify({ filestem: filestem.trim() }),
     });
 
     const data = await response.json();
