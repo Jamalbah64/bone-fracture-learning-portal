@@ -31,8 +31,7 @@ router.post("/", async (req, res) => {
 
     const output = await client.imageClassification({
       data: imageBlob,
-      model: "wesleyacheng/dog-breeds-multiclass-image-classification-with-vit",
-      provider: "hf-inference",
+      model: "google/vit-base-patch16-224",
     });
 
     return res.json(output);
