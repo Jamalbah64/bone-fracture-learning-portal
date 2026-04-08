@@ -23,7 +23,9 @@
 }
 
 /* ---------- Global Layout ---------- */
-html, body, #root {
+html,
+body,
+#root {
   overflow-x: hidden;
   height: 100%;
   width: 100%;
@@ -34,8 +36,8 @@ body {
     "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
   color: var(--text);
   background: radial-gradient(1000px 700px at 20% 10%, rgba(56, 189, 248, 0.25), transparent 55%),
-              radial-gradient(900px 600px at 80% 30%, rgba(96, 165, 250, 0.18), transparent 55%),
-              var(--bg);
+    radial-gradient(900px 600px at 80% 30%, rgba(96, 165, 250, 0.18), transparent 55%),
+    var(--bg);
 }
 
 /* Root App Structure */
@@ -62,7 +64,8 @@ body {
 }
 
 .container p {
-  margin-top: 1rem;   /* adjust to 1.5rem or 2rem if you want more space */
+  margin-top: 1rem;
+  /* adjust to 1.5rem or 2rem if you want more space */
 }
 
 /* ---------- Hero ---------- */
@@ -70,8 +73,10 @@ body {
   padding: calc(var(--pad) + 10px) 0 var(--pad);
   scroll-margin-top: var(--nav-h);
 }
+
 .hero {
-  margin-top: -15px; /* small breathing room under nav */
+  margin-top: -15px;
+  /* small breathing room under nav */
 }
 
 .hero-grid {
@@ -81,7 +86,8 @@ body {
 }
 
 .hero-card li {
-  margin-left: 10px;   /* small shift right */
+  margin-left: 10px;
+  /* small shift right */
 }
 
 .hero-content,
@@ -114,9 +120,11 @@ body {
   cursor: pointer;
   transition: transform 0.12s ease, background 0.2s ease;
   min-height: 42px;
-  
-  margin-right: 8px;  /* horizontal spacing between buttons */
-  margin-top: 9px;   /* vertical spacing from elements above (like upload box) */
+
+  margin-right: 8px;
+  /* horizontal spacing between buttons */
+  margin-top: 9px;
+  /* vertical spacing from elements above (like upload box) */
 }
 
 .btn:hover {
@@ -126,11 +134,9 @@ body {
 
 .btn-primary {
   border: 1px solid rgba(56, 189, 248, 0.35);
-  background: linear-gradient(
-    90deg,
-    rgba(56, 189, 248, 0.25),
-    rgba(96, 165, 250, 0.18)
-  );
+  background: linear-gradient(90deg,
+      rgba(56, 189, 248, 0.25),
+      rgba(96, 165, 250, 0.18));
 }
 
 .btn-secondary {
@@ -199,6 +205,7 @@ body {
   padding: 18px;
   min-width: 0;
 }
+
 /* Upload Page Layout */
 .upload-page {
   min-height: 100vh;
@@ -215,6 +222,7 @@ body {
   gap: 30px;
   align-items: start;
 }
+
 .upload-card {
   margin-top: 20px;
   display: grid;
@@ -225,15 +233,44 @@ body {
   padding: 10px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   color: white;
+}
+
+.drop-zone {
+  margin-top: 14px;
+  padding: 24px;
+  border: 2px dashed #64748b;
+  border-radius: 14px;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(15, 23, 42, 0.25);
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.drop-zone:hover {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.drop-zone-active {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+  transform: scale(1.01);
+}
+
+.selected-file-box {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.12);
 }
 
 /* Preview */
 .preview-card,
 .result-card {
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.04);
   padding: 20px;
   border-radius: var(--radius);
 }
@@ -250,7 +287,7 @@ body {
 
 .confidence-bar {
   height: 10px;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   margin-top: 12px;
   overflow: hidden;
@@ -270,7 +307,7 @@ body {
 .spinner {
   width: 36px;
   height: 36px;
-  border: 4px solid rgba(255,255,255,0.2);
+  border: 4px solid rgba(255, 255, 255, 0.2);
   border-top: 4px solid #38bdf8;
   border-radius: 50%;
   margin: 0 auto 10px;
@@ -278,7 +315,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error-box {
@@ -291,7 +330,8 @@ body {
 
 /* Upload Box */
 .upload-box {
-  margin-top: 24px; /* space above the box */
+  margin-top: 24px;
+  /* space above the box */
   border: 1px dashed rgba(255, 255, 255, 0.22);
   border-radius: 16px;
   padding: 16px;
@@ -356,7 +396,7 @@ body {
   padding: 8px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   color: white;
 }
 
@@ -365,7 +405,7 @@ body {
   position: relative;
   margin-top: 30px;
   padding-left: 20px;
-  border-left: 2px solid rgba(255,255,255,0.15);
+  border-left: 2px solid rgba(255, 255, 255, 0.15);
 }
 
 /* Each item */
@@ -388,7 +428,7 @@ body {
 
 /* Content */
 .timeline-content {
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
   padding: 16px;
   border-radius: var(--radius);

@@ -20,7 +20,7 @@ export async function register(req, res) { // Endpoint for user registration
     }
 }
 
-export async function login(req, res) {
+export async function login(req, res) { // Endpoint for user login
     try {
         const { username, password } = req.body;
 
@@ -36,7 +36,15 @@ export async function login(req, res) {
             { expiresIn: "2h" }
         );
 
-        return res.json({ token });
+        return res.json({
+            token,
+            message: "Login successful",
+            user: {
+                id: user._id,
+                username: user.username,
+                role: user.role,
+            },
+        });
     } catch (err) {
         console.error("Login error:", err && err.stack ? err.stack : err);
         return res.status(500).json({ error: "Server error" });

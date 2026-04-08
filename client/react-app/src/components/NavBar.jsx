@@ -1,33 +1,31 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useNotification } from "../context/NotificationContext.jsx";
+import { logoutUser } from "../utils/logout.js";
 import "./NavBar.css";
 
 function NavBar({ user }) {
   const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { notify } = useNotification();
 
-  function handleLogout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    // remove remember cookie
-    document.cookie = 'remember=; max-age=0; path=/';
-    // notify app to update state
-    try { window.dispatchEvent(new Event('auth-change')); }
-    catch { // ignore
-    }
-    navigate('/login');
-  }
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const isActive = (path) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
+  const handleLogout = () => {
+    logoutUser();
+    setMenuOpen(false);
+    notify("You have been logged out.", "info");
+    navigate("/login");
+  };
+
   return (
     <nav className="nav">
       <div className="nav-inner container">
-        {/* Brand */}
         <Link
           to="/"
           className="brand"
@@ -42,7 +40,6 @@ function NavBar({ user }) {
           </div>
         </Link>
 
-        {/* Nav Links */}
         <ul className={`nav-links ${menuOpen ? "open" : ""}`}>
           <li>
             <Link
@@ -77,9 +74,11 @@ function NavBar({ user }) {
           <li>
             <Link
               to="/timeline"
-              className={isActive("/timeline") || isActive("/patients")
-                ? "nav-link active"
-                : "nav-link"}
+              className={
+                isActive("/timeline") || isActive("/patients")
+                  ? "nav-link active"
+                  : "nav-link"
+              }
               onClick={() => setMenuOpen(false)}
             >
               Timeline
@@ -97,23 +96,41 @@ function NavBar({ user }) {
           </li>
 
           <li className="mobile-login">
-            <button className="nav-login" onClick={handleLogout}>Logout</button>
+            <button
+              className="nav-login"
+              type="button"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
           </li>
         </ul>
 
-        {/* Desktop Logout */}
         <div className="nav-right">
-          {user && <div className="nav-user">{user.username}</div>}
-          <button className="nav-login desktop-only" onClick={handleLogout}>Logout</button>
+          {user && (
+            <div className="nav-user">
+              {user.username} {user.role ? `(${user.role})` : ""}
+            </div>
+          )}
+
+          <button
+            className="nav-login desktop-only"
+            type="button"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
         </div>
 
-        {/* Hamburger */}
-        <div
+        <button
           className="hamburger"
-          onClick={() => setMenuOpen(!menuOpen)}
+          type="button"
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((prev) => !prev)}
         >
           ☰
-        </div>
+        </button>
       </div>
     </nav>
   );

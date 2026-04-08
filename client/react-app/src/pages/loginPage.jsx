@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useNotification } from "../context/notificationContext";
 
 /**
  * Login Component
@@ -8,6 +9,7 @@ import { useNavigate, Link } from "react-router-dom";
  */
 function Login() {
   const navigate = useNavigate();
+  const { notify } = useNotification();
 
   // State for form inputs
   const [username, setUsername] = useState("");
@@ -38,6 +40,7 @@ function Login() {
       // Handle failed login
       if (!response.ok) {
         setError(data.error || "Login failed");
+        notify(data.error || "Login failed", "error");
         return;
       }
 
@@ -59,24 +62,23 @@ function Login() {
       } else {
         document.cookie = `remember=; max-age=0; path=/`;
       }
-
-      // Redirect user to dashboard/home
+      // Redirect to homepage on successful login
+      notify("Login successful. Welcome back.", "success");
       navigate("/");
     } catch {
+      // Handle unexpected errors
       setError("An unexpected error occurred");
+      notify("An unexpected error occurred during login.", "error");
     }
   };
 
   return (
     <div className="auth-page">
       <div className="auth-card">
-        {/* Page title */}
         <h2>Welcome Back</h2>
         <p className="muted">Login to continue</p>
 
-        {/* Login Form */}
         <form onSubmit={handleSubmit} className="auth-form">
-          {/* Username Input */}
           <input
             type="text"
             placeholder="Username"
@@ -85,7 +87,6 @@ function Login() {
             required
           />
 
-          {/* Password Input */}
           <input
             type="password"
             placeholder="Password"
@@ -94,7 +95,6 @@ function Login() {
             required
           />
 
-          {/* Remember Me Checkbox */}
           <div className="auth-options">
             <label>
               <input
@@ -106,16 +106,13 @@ function Login() {
             </label>
           </div>
 
-          {/* Error Message */}
           {error && <div className="error-box">{error}</div>}
 
-          {/* Submit Button */}
           <button className="btn btn-primary" type="submit">
             Login
           </button>
         </form>
 
-        {/* Link to Register Page */}
         <p className="auth-switch">
           Don’t have an account? <Link to="/register">Register</Link>
         </p>

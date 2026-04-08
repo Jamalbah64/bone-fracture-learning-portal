@@ -1,21 +1,102 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { classifyImage } from "../api/classification";
+import { useNotification } from "../context/NotificationContext.jsx";
+import { validateMedicalImage } from "../utils/medicalImageValidation.js";
 
 function XrayUpload() {
+  const { notify } = useNotification();
+  const fileInputRef = useRef(null);
+
   const [filestem, setFilestem] = useState("");
   const [patientId, setPatientId] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [message, setMessage] = useState("");
 
+  const clearFeedback = () => {
+    setError("");
+    setMessage("");
+    setResult(null);
+  };
+
+  const handleAcceptedFile = (file) => {
+    const validation = validateMedicalImage(file);
+
+    if (!validation.valid) {
+      setSelectedFile(null);
+      setError(validation.reason);
+      notify(validation.reason, "warning");
+      return;
+    }
+
+    setSelectedFile(file);
+    setError("");
+    setMessage(`Selected file: ${file.name}`);
+    notify("Medical image accepted for analysis.", "success");
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    clearFeedback();
+    handleAcceptedFile(file);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    clearFeedback();
+    handleAcceptedFile(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const onRun = async () => {
     const trimmedFilestem = filestem.trim();
     const trimmedPatientId = patientId.trim();
 
-    if (!trimmedFilestem || !trimmedPatientId) {
-      setError("Please provide a patient ID and an image filestem.");
+    if (!trimmedPatientId) {
+      const msg = "Please provide a patient ID.";
+      setError(msg);
+      notify(msg, "error");
       return;
+    }
+
+    if (!trimmedFilestem) {
+      const msg = "Please provide an image filestem for classification.";
+      setError(msg);
+      notify(msg, "error");
+      return;
+    }
+
+    if (selectedFile) {
+      const validation = validateMedicalImage(selectedFile);
+
+      if (!validation.valid) {
+        setError(validation.reason);
+        notify(validation.reason, "warning");
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -59,9 +140,14 @@ function XrayUpload() {
       });
 
       localStorage.setItem("timelineData", JSON.stringify(timelineData));
-      setMessage("Analysis complete! Event saved to timeline.");
+
+      const successMessage = "Analysis complete. Classification results are ready to view.";
+      setMessage(successMessage);
+      notify(successMessage, "success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Classification failed");
+      const msg = err instanceof Error ? err.message : "Classification failed";
+      setError(msg);
+      notify(msg, "error");
     } finally {
       setIsLoading(false);
     }
@@ -73,8 +159,8 @@ function XrayUpload() {
         <div className="upload-left">
           <h1>AI Fracture Detection</h1>
           <p>
-            Enter a patient ID and an X-ray image filestem from the dataset.
-            The entered patient ID must match the dataset record for that image.
+            Enter a patient ID and a dataset image filestem. You may also drag and
+            drop a medical image for validation before analysis.
           </p>
 
           <div className="upload-card">
@@ -101,6 +187,35 @@ function XrayUpload() {
               }}
             />
 
+            <div
+              className={`drop-zone ${dragActive ? "drop-zone-active" : ""}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={handleBrowseClick}
+              role="button"
+              tabIndex={0}
+            >
+              <p><strong>Drag and drop</strong> an X-ray, MRI, or CT scan here</p>
+              <p>or click to choose a file</p>
+              <small>Accepted: JPG, JPEG, PNG, TIFF, DCM, DICOM</small>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".png,.jpg,.jpeg,.tif,.tiff,.dcm,.dicom"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+
+            {selectedFile && (
+              <div className="selected-file-box">
+                <p><strong>Selected file:</strong> {selectedFile.name}</p>
+                <p><strong>Size:</strong> {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+              </div>
+            )}
+
             <button
               className="btn btn-primary"
               type="button"
@@ -111,11 +226,7 @@ function XrayUpload() {
             </button>
 
             {error && <div className="error-box">{error}</div>}
-            {message && (
-              <div style={{ color: "#38bdf8", marginTop: 10 }}>
-                {message}
-              </div>
-            )}
+            {message && <div style={{ color: "#38bdf8", marginTop: 10 }}>{message}</div>}
           </div>
         </div>
 
@@ -123,14 +234,17 @@ function XrayUpload() {
           {result && (
             <div className="result-card">
               <h3>Analysis Result</h3>
+
               <div className="result-row">
                 <span>Filestem:</span>
                 <strong>{result.filestem}</strong>
               </div>
+
               <div className="result-row">
                 <span>Patient ID:</span>
                 <strong>{result.patient_id ?? "Not found"}</strong>
               </div>
+
               <div className="result-row">
                 <span>Classifications found:</span>
                 <strong>{result.num_labels}</strong>
