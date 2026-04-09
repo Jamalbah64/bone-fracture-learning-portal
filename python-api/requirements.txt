@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pandas
+numpy
+python-multipart
+pydantic
+pillow # this is for checking image dimensions and formats, rejecting corrupted uploads, and other basic image processing tasks.
+
+# pip install -r requirements.txt - this is to run the mock_api.py

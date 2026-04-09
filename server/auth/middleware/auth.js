@@ -1,21 +1,44 @@
-// Authentication middleware to protect route endpoints
-// Also verifies JWT tokens and extracts user info for use in route handlers
+// Middleware to protect routes by verifying JWT tokens from cookies and validating user sessions
 
 import jwt from "jsonwebtoken";
+import { AUTH_COOKIE_NAME } from "../cookies.js";
+import { findActiveSessionByJti, hashToken } from "../sessionService.js";
 
-export default function authMiddleware(req, res, next) {
-    const authHeader = req.headers['authorization'];
-
-    // Check for Bearer token in Authorization header
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Missing or invalid token' });
-    }
-    const token = authHeader.split(' ')[1];
+export default async function authMiddleware(req, res, next) {
     try {
+        const token = req.cookies?.[AUTH_COOKIE_NAME];
+
+        if (!token) {
+            return res.status(401).json({ error: "Missing authentication cookie" });
+        }
+
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
+
+        if (!decoded?.jti) {
+            return res.status(401).json({ error: "Invalid token payload" });
+        }
+
+        const session = await findActiveSessionByJti(decoded.jti);
+
+        if (!session) {
+            return res.status(401).json({ error: "Session expired or revoked" });
+        }
+
+        if (session.tokenHash !== hashToken(token)) {
+            return res.status(401).json({ error: "Session token mismatch" });
+        }
+
+        session.lastUsedAt = new Date();
+        await session.save();
+
+        req.user = {
+            userId: decoded.userId,
+            role: decoded.role,
+            jti: decoded.jti,
+        };
+
         next();
     } catch (err) {
-        return res.status(401).json({ error: 'Invalid token' });
+        return res.status(401).json({ error: "Invalid or expired authentication" });
     }
 }

@@ -7,16 +7,23 @@ function NavBar({ user }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
-  function handleLogout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    // remove remember cookie
-    document.cookie = 'remember=; max-age=0; path=/';
-    // notify app to update state
-    try { window.dispatchEvent(new Event('auth-change')); }
-    catch { // ignore
+  async function handleLogout() {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // ignore network failure, still reset UI
     }
-    navigate('/login');
+
+    try {
+      window.dispatchEvent(new Event("auth-change"));
+    } catch {
+      // ignore
+    }
+
+    navigate("/login");
   }
 
   const isActive = (path) => {
