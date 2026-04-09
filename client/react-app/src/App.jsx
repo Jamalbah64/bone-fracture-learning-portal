@@ -15,131 +15,113 @@ import Register from "./pages/registerPage";
 import Settings from "./pages/settings";
 import XrayUpload from "./pages/xray_upload";
 
-
-
 function App() {
-  // Initialize token and user from storage synchronously to avoid sync setState in effects
-  const initialToken = (() => {
-    const t = localStorage.getItem('token');
-    // Only retain token if the remember cookie exists
-    return t && /(?:^|; )remember=/.test(document.cookie) ? t : null;
-  })();
-
-  const initialUser = (() => {
-    try {
-      return initialToken ? JSON.parse(localStorage.getItem('user') || 'null') : null;
-    } catch {
-      return null;
-    }
-  })();
-
-  const [token, setToken] = useState(initialToken);
-  const [user, setUser] = useState(initialUser);
+  const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // Listen for storage changes (in case another tab logs in/out)
-    function onStorage(e) {
-      if (e.key === 'token') setToken(e.newValue);
-    }
-
-    // Listen for custom auth-change event in same tab
     function onAuthChange() {
-      setToken(localStorage.getItem('token'));
+      fetchMe();
     }
 
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('auth-change', onAuthChange);
+    window.addEventListener("auth-change", onAuthChange);
+    fetchMe();
+
     return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('auth-change', onAuthChange);
+      window.removeEventListener("auth-change", onAuthChange);
     };
   }, []);
 
-  // When token changes, fetch the current user's profile to validate the token
-  useEffect(() => {
-    if (!token) {
-      // remove persisted user; defer setUser to avoid synchronous state update in effect
-      localStorage.removeItem('user');
-      const id = setTimeout(() => setUser(null), 0);
-      return () => clearTimeout(id);
-    }
+  async function fetchMe() {
+    try {
+      const res = await fetch("/api/auth/me", {
+        method: "GET",
+        credentials: "include",
+      });
 
-    let mounted = true;
-    (async function fetchMe() {
-      try {
-        const res = await fetch('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!mounted) return;
-        if (!res.ok) {
-          // token invalid or expired
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setToken(null);
-          setUser(null);
-          return;
-        }
-        const data = await res.json();
-        setUser(data);
-        // persist user only if remember cookie exists
-        if (/(?:^|; )remember=/.test(document.cookie)) {
-          localStorage.setItem('user', JSON.stringify(data));
-        } else {
-          localStorage.removeItem('user');
-        }
-      } catch (err) {
-        console.error('Failed to fetch /me', err);
+      if (!res.ok) {
+        setUser(null);
+        setAuthChecked(true);
+        return;
       }
-    })();
 
-    return () => {
-      mounted = false;
-    };
-  }, [token]);
+      const data = await res.json();
+      setUser(data);
+      setAuthChecked(true);
+    } catch (err) {
+      console.error("Failed to fetch /me", err);
+      setUser(null);
+      setAuthChecked(true);
+    }
+  }
+
+  if (!authChecked) {
+    return <div className="container">Checking authentication...</div>;
+  }
 
   return (
     <BrowserRouter>
-      {/* Show NavBar only when logged in */}
-      {token && <NavBar user={user} />}
+      {user && <NavBar user={user} />}
 
       <main className="content">
         <div className="container">
           <Routes>
-            {/* These are the main routes for the application */}
             <Route
               path="/"
               element={
-                token ? (
-                  <Dashboard />
-                ) : (
-                  <Navigate to="/login" replace />
-                )
+                user ? <Dashboard /> : <Navigate to="/login" replace />
               }
             />
-            {/* Authentication routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-
-            {/* Additional routes */}
-            <Route path="/upload" element={<XrayUpload />} />
-            <Route path="/timeline" element={<PatientTimeline />} />
+            <Route
+              path="/login"
+              element={
+                user ? <Navigate to="/" replace /> : <Login />
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                user ? <Navigate to="/" replace /> : <Register />
+              }
+            />
+            <Route
+              path="/upload"
+              element={
+                user ? <XrayUpload /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route
+              path="/timeline"
+              element={
+                user ? <PatientTimeline /> : <Navigate to="/login" replace />
+              }
+            />
             <Route
               path="/patients/:patientId"
-              element={<PatientTimeline />}
+              element={
+                user ? <PatientTimeline /> : <Navigate to="/login" replace />
+              }
             />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route
+              path="/analytics"
+              element={
+                user ? <Analytics /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                user ? <Settings /> : <Navigate to="/login" replace />
+              }
+            />
           </Routes>
         </div>
       </main>
 
-      {/* Show footer only when logged in*/}
-      {token && (
+      {user && (
         <footer className="footer">
           <div className="container">
-            <p>
-              © {new Date().getFullYear()} Bone Fracture Learning Portal
-            </p>
+            <p>© {new Date().getFullYear()} Bone Fracture Learning Portal</p>
           </div>
         </footer>
       )}

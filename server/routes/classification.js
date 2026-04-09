@@ -1,44 +1,107 @@
-import express from "express";
-import { InferenceClient } from "@huggingface/inference";
 import "dotenv/config";
+import express from "express";
+import FormData from "form-data";
+import fs from "fs";
+import multer from "multer";
+import path from "path";
 
 const router = express.Router();
-const client = new InferenceClient(process.env.HF_API_KEY);
+const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
 
-function decodeBase64Image(input) {
-  if (typeof input !== "string" || input.length === 0) return null;
-
-  // Supports either raw base64 or a full data URL.
-  const base64 = input.includes("base64,") ? input.split("base64,")[1] : input;
-
-  try {
-    return Buffer.from(base64, "base64");
-  } catch {
-    return null;
-  }
+const uploadDir = path.resolve("uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-router.post("/", async (req, res) => {
-  try {
-    const imageBase64 = req.body?.imageBase64 ?? req.body?.image;
-    const imageBuffer = decodeBase64Image(imageBase64);
+const allowedExtensions = [".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dcm", ".dicom"];
+const allowedMimeTypes = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/tiff",
+  "application/dicom",
+  "application/octet-stream",
+];
 
-    if (!imageBuffer) {
-      return res.status(400).json({ error: "Missing/invalid imageBase64" });
+function looksMedicalFilename(name = "") {
+  const lower = name.toLowerCase();
+  return ["xray", "x-ray", "radiograph", "mri", "ct", "dicom", "scan"].some((term) =>
+    lower.includes(term)
+  );
+}
+
+const upload = multer({
+  dest: uploadDir,
+  limits: {
+    fileSize: 25 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (!allowedExtensions.includes(ext)) {
+      return cb(
+        new Error("Invalid image. Please upload only X-rays, MRIs, or CT scans.")
+      );
     }
 
-    const imageBlob = new Blob([imageBuffer], { type: "image/jpeg" });
+    const mimeOk = !file.mimetype || allowedMimeTypes.includes(file.mimetype);
+    const nameOk = looksMedicalFilename(file.originalname);
 
-    const output = await client.imageClassification({
-      data: imageBlob,
-      model: "wesleyacheng/dog-breeds-multiclass-image-classification-with-vit",
-      provider: "hf-inference",
+    if (!mimeOk && !nameOk) {
+      return cb(
+        new Error("This file does not appear to be a supported medical image.")
+      );
+    }
+
+    cb(null, true);
+  },
+});
+
+router.post("/", upload.single("image"), async (req, res) => {
+  let uploadedPath = null;
+
+  try {
+    const patientId = (req.body.patientId || "").trim();
+
+    if (!patientId) {
+      if (req.file?.path) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: "Missing patient ID" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No medical image uploaded" });
+    }
+
+    uploadedPath = req.file.path;
+
+    const form = new FormData();
+    form.append("patientId", patientId);
+    form.append("image", fs.createReadStream(uploadedPath), req.file.originalname);
+
+    const response = await fetch(`${FASTAPI_URL}/predict-upload`, {
+      method: "POST",
+      headers: form.getHeaders(),
+      body: form,
     });
 
-    return res.json(output);
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: data.detail || data.error || "Prediction failed",
+      });
+    }
+
+    return res.json(data);
   } catch (err) {
-    console.error(err.response?.data || err.message || err);
-    return res.status(500).json({ error: "Classification failed" });
+    console.error(err.message || err);
+    return res.status(500).json({
+      error: err.message || "Classification failed",
+    });
+  } finally {
+    if (uploadedPath && fs.existsSync(uploadedPath)) {
+      fs.unlinkSync(uploadedPath);
+    }
   }
 });
 
