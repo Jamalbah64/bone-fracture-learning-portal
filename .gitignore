@@ -3,7 +3,6 @@ node_modules
 *.log
 dist
 .mailmap
-
 venv/
 .venv/
 env/
