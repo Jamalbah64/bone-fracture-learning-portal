@@ -1,3 +1,4 @@
+import axios from "axios";
 import "dotenv/config";
 import express from "express";
 import FormData from "form-data";
@@ -20,37 +21,28 @@ const allowedMimeTypes = [
   "image/jpg",
   "image/tiff",
   "application/dicom",
+  "application/dicom+json",
+  "application/x-dicom",
   "application/octet-stream",
 ];
-
-function looksMedicalFilename(name = "") {
-  const lower = name.toLowerCase();
-  return ["xray", "x-ray", "radiograph", "mri", "ct", "dicom", "scan"].some((term) =>
-    lower.includes(term)
-  );
-}
 
 const upload = multer({
   dest: uploadDir,
   limits: {
     fileSize: 25 * 1024 * 1024,
+    files: 1,
   },
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
 
     if (!allowedExtensions.includes(ext)) {
-      return cb(
-        new Error("Invalid image. Please upload only X-rays, MRIs, or CT scans.")
-      );
+      return cb(new Error("Invalid image. Please upload only X-rays, MRIs, or CT scans."));
     }
 
     const mimeOk = !file.mimetype || allowedMimeTypes.includes(file.mimetype);
-    const nameOk = looksMedicalFilename(file.originalname);
 
-    if (!mimeOk && !nameOk) {
-      return cb(
-        new Error("This file does not appear to be a supported medical image.")
-      );
+    if (!mimeOk) {
+      return cb(new Error("Unsupported file type. Please upload JPG, PNG, TIFF, or DICOM images."));
     }
 
     cb(null, true);
@@ -61,42 +53,50 @@ router.post("/", upload.single("image"), async (req, res) => {
   let uploadedPath = null;
 
   try {
-    const patientId = (req.body.patientId || "").trim();
-
-    if (!patientId) {
-      if (req.file?.path) fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: "Missing patient ID" });
-    }
-
     if (!req.file) {
       return res.status(400).json({ error: "No medical image uploaded" });
     }
 
     uploadedPath = req.file.path;
 
-    const form = new FormData();
-    form.append("patientId", patientId);
-    form.append("image", fs.createReadStream(uploadedPath), req.file.originalname);
-
-    const response = await fetch(`${FASTAPI_URL}/predict-upload`, {
-      method: "POST",
-      headers: form.getHeaders(),
-      body: form,
+    console.log("Received upload from client:", {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      path: uploadedPath,
     });
 
-    const data = await response.json();
+    const form = new FormData();
+    form.append("image", fs.createReadStream(uploadedPath), {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype || "application/octet-stream",
+    });
 
-    if (!response.ok) {
+    const response = await axios.post(`${FASTAPI_URL}/predict-upload`, form, {
+      headers: form.getHeaders(),
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      validateStatus: () => true,
+    });
+
+    console.log("FastAPI response status:", response.status);
+    console.log("FastAPI response data:", response.data);
+
+    if (response.status >= 400) {
       return res.status(response.status).json({
-        error: data.detail || data.error || "Prediction failed",
+        error: response.data?.detail || response.data?.error || "Prediction failed",
       });
     }
 
-    return res.json(data);
+    return res.json(response.data);
   } catch (err) {
-    console.error(err.message || err);
-    return res.status(500).json({
-      error: err.message || "Classification failed",
+    console.error("Classification route error:", err.response?.data || err.message || err);
+
+    return res.status(err.response?.status || 500).json({
+      error:
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        err.message ||
+        "Classification failed",
     });
   } finally {
     if (uploadedPath && fs.existsSync(uploadedPath)) {
