@@ -1,16 +1,25 @@
-export async function classifyImage(filestem) {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-  const response = await fetch(`${apiBaseUrl}/api/classify`, {
+export async function classifyUploadedImage(file) {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("You must be logged in to upload an image.");
+  }
+
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const response = await fetch("/api/classify", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ filestem }),
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
   });
 
   const data = await response.json();
 
   if (!response.ok) {
-    const message = typeof data?.error === "string" ? data.error : "Classification failed";
-    throw new Error(message);
+    throw new Error(data.error || "Classification failed");
   }
 
   return data;

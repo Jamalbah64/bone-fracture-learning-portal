@@ -182,6 +182,10 @@ export const SKUS = {
 				tflops: 104.8,
 				memory: [32],
 			},
+			"RTX 5090 Mobile": {
+				tflops: 31.8,
+				memory: [24],
+			},
 			"RTX 5080": {
 				tflops: 56.28,
 				memory: [16],
@@ -548,7 +552,7 @@ export const SKUS = {
 				tflops: 26.11,
 				memory: [16, 32],
 			},
-			"Ryzen AI Max 395+": {
+			"Ryzen AI Max+ 395": {
 				tflops: 59.4,
 				memory: [64, 96, 128],
 			},

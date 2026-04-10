@@ -1,42 +1,83 @@
 import { useState } from "react";
-import { classifyImage } from "../api/classification";
+import { classifyUploadedImage } from "../api/classification";
+
+const ALLOWED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dcm", ".dicom"];
+
+function getExtension(name = "") {
+  const index = name.lastIndexOf(".");
+  return index >= 0 ? name.slice(index).toLowerCase() : "";
+}
 
 function XrayUpload() {
-  const [filestem, setFilestem] = useState("");
-  const [patientId, setPatientId] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [message, setMessage] = useState("");
 
-  const onRun = async () => {
-    if (!filestem.trim() || !patientId.trim()) {
-      setError("Please provide a patient ID and an image filestem.");
+  const validateFile = (file) => {
+    if (!file) {
+      return "No file was dropped.";
+    }
+
+    const ext = getExtension(file.name);
+
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return "Invalid image. Please upload JPG, JPEG, PNG, TIFF, DCM, or DICOM files.";
+    }
+
+    return "";
+  };
+
+  const handleAcceptedFile = (file) => {
+    const validationMessage = validateFile(file);
+
+    if (validationMessage) {
+      setSelectedFile(null);
+      setError(validationMessage);
+      setMessage("");
+      return;
+    }
+
+    setSelectedFile(file);
+    setError("");
+    setMessage(`Dropped file: ${file.name}`);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    setResult(null);
+    handleAcceptedFile(file);
+  };
+
+  const handleRun = async () => {
+    if (!selectedFile) {
+      setError("Please drag and drop a medical image.");
+      return;
+    }
+
+    const validationMessage = validateFile(selectedFile);
+    if (validationMessage) {
+      setError(validationMessage);
       return;
     }
 
     setIsLoading(true);
     setError("");
     setResult(null);
+    setMessage("");
 
     try {
-      const data = await classifyImage(filestem.trim());
+      const data = await classifyUploadedImage(selectedFile);
       setResult(data);
-
-      const topPrediction = data.predictions?.[0];
-      const timelineData = JSON.parse(localStorage.getItem("timelineData")) || {};
-      if (!timelineData[patientId]) timelineData[patientId] = [];
-
-      timelineData[patientId].push({
-        date: new Date().toISOString().split("T")[0],
-        event: "X-ray Analyzed",
-        filename: data.filestem,
-        result: topPrediction?.code ?? "Unknown",
-        confidence: topPrediction?.confidence ?? null,
-      });
-
-      localStorage.setItem("timelineData", JSON.stringify(timelineData));
-      setMessage("Analysis complete! Event saved to timeline.");
+      setMessage("Analysis complete. Classification results are ready to view.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Classification failed");
     } finally {
@@ -44,41 +85,60 @@ function XrayUpload() {
     }
   };
 
+  const handleClearFile = () => {
+    setSelectedFile(null);
+    setResult(null);
+    setError("");
+    setMessage("");
+  };
+
   return (
     <section className="upload-page">
       <div className="upload-container">
         <div className="upload-left">
           <h1>AI Fracture Detection</h1>
-          <p>
-            Enter an X-ray image filestem from the dataset to classify it.
-            The AI model must run to save the result to the patient timeline.
-          </p>
+          <p>Drag and drop an X-ray, MRI, or CT scan for analysis.</p>
 
           <div className="upload-card">
-            <input
-              type="text"
-              placeholder="Enter Patient ID"
-              value={patientId}
-              onChange={(e) => setPatientId(e.target.value)}
-            />
-
-            <input
-              type="text"
-              placeholder="Enter image filestem (e.g. 0001_1297860395_01_WRI-L1_M014)"
-              value={filestem}
-              onChange={(e) => {
-                setFilestem(e.target.value);
-                setError("");
-                setResult(null);
-                setMessage("");
+            <div
+              className={`drop-zone ${dragActive ? "drop-zone-active" : ""}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragActive(true);
               }}
-            />
+              onDragEnter={(e) => {
+                e.preventDefault();
+                setDragActive(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                setDragActive(false);
+              }}
+              onDrop={handleDrop}
+            >
+              <p><strong>Drag and drop</strong> an X-ray, MRI, or CT scan here</p>
+              <small>Accepted: JPG, JPEG, PNG, TIFF, DCM, DICOM</small>
+            </div>
+
+            {selectedFile && (
+              <div className="selected-file-box">
+                <p><strong>Dropped file:</strong> {selectedFile.name}</p>
+                <p><strong>Size:</strong> {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleClearFile}
+                >
+                  Clear File
+                </button>
+              </div>
+            )}
 
             <button
               className="btn btn-primary"
               type="button"
-              onClick={onRun}
-              disabled={!filestem.trim() || isLoading}
+              onClick={handleRun}
+              disabled={!selectedFile || isLoading}
             >
               {isLoading ? "Analyzing..." : "Run Analysis"}
             </button>
@@ -93,8 +153,8 @@ function XrayUpload() {
             <div className="result-card">
               <h3>Analysis Result</h3>
               <div className="result-row">
-                <span>Filestem:</span>
-                <strong>{result.filestem}</strong>
+                <span>Filename:</span>
+                <strong>{result.filename || selectedFile?.name}</strong>
               </div>
               <div className="result-row">
                 <span>Classifications found:</span>
