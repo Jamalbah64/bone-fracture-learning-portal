@@ -1,0 +1,30 @@
+services:
+  server:
+    build:
+      context: ./server
+    container_name: FrACT-server
+    restart: always
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./server/.env
+    depends_on:
+      - fastapi
+
+  client:
+    build:
+      context: ./client/react-app
+    container_name: FrACT-ui
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+
+  fastapi:
+    build:
+      context: ./python-api
+    container_name: FrACT-fastapi
+    restart: always
+    ports:
+      - "8000:8000"

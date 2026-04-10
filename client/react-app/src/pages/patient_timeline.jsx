@@ -18,12 +18,13 @@ function PatientTimeline() {
     <section className="timeline-page container">
       <h1>Patient Timeline</h1>
 
+      {/* Patient Selector */}
       {patientIds.length > 1 && (
         <div className="patient-selector">
           <label>Select Patient:</label>
           <select
-            onChange={(e) => setSelectedPatient(e.target.value)}
             value={selectedPatient || ""}
+            onChange={(e) => setSelectedPatient(e.target.value)}
           >
             <option value="" disabled>
               Choose a patient
@@ -37,21 +38,45 @@ function PatientTimeline() {
         </div>
       )}
 
+      {/* Timeline */}
       {selectedPatient && patients[selectedPatient]?.length > 0 ? (
-        <div className="timeline">
-          {patients[selectedPatient].map((item, index) => (
-            <div key={index} className="timeline-item">
-              <div className="timeline-dot" />
-              <div className="timeline-content">
-                <span className="timeline-date">{item.date}</span>
-                <h3>{item.event}</h3>
-                <p>{item.filename} — {item.result}</p>
+        <div className="timeline-horizontal">
+          {patients[selectedPatient]
+            .slice()
+            .reverse()
+            .map((item, index) => (
+              <div key={index} className="timeline-card">
+                
+                {/* IMAGE */}
+                {item.image && (
+                  <div className="timeline-image-wrapper">
+                    <img
+                      src={item.image}
+                      alt="X-ray"
+                      className="timeline-image"
+                    />
+                  </div>
+                )}
+
+                {/* CONTENT */}
+                <div className="timeline-info">
+                  <div className="timeline-date">
+                    {item.date} • {item.time}
+                  </div>
+
+                  <h3 className="timeline-title">{item.result}</h3>
+
+                  {item.confidence !== null && (
+                    <p className="timeline-confidence">
+                      Confidence: {(item.confidence * 100).toFixed(1)}%
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       ) : selectedPatient ? (
-        <p className="muted">No timeline events for this patient yet.</p>
+        <p className="muted">No timeline data available.</p>
       ) : (
         <p className="muted">Select a patient to view timeline.</p>
       )}

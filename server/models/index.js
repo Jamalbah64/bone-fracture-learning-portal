@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const LOCAL_USERS_FILE = path.join(__dirname, '..', 'localdb', 'users.json');
 
-async function ensureLocalFile() {
+async function ensureLocalFile() { // Ensure the local users file exists, creating it if not
     try {
         await fs.access(LOCAL_USERS_FILE);
     } catch (err) {
@@ -29,7 +29,7 @@ async function writeUsers(users) {
 }
 
 // Local file based user methods
-const LocalUser = {
+const LocalUser = { // Provides methods to find and create users in a local JSON file, with password hashing for security
     async findOne(query) {
         const users = await readUsers();
         if (!query) return null;
@@ -42,15 +42,15 @@ const LocalUser = {
         return null;
     },
 
-    async create({ username, password, role }) {
+    async create({ username, password, role }) { // Create a new user, checking for duplicates and hashing the password before storing
         const users = await readUsers();
         if (users.find(u => u.username === username)) {
             const err = new Error('Username already in use');
             err.code = 'DUPLICATE';
             throw err;
         }
-        // Hash password before storing
-        const salt = await bcrypt.genSalt(10); //Salt added to passwords to ensure they're unique even if two users have the same password
+        // Hash and salt password before storing
+        const salt = await bcrypt.genSalt(10); // Salt added to passwords to ensure they're unique even if two users have the same password
         const hashed = await bcrypt.hash(password, salt); // Added hashing to password to ensure security of user in case of data breach
         const id = Date.now().toString(36) + Math.floor(Math.random() * 36 ** 4).toString(36); // Generate a unique ID for the user
         const user = { _id: id, username, password: hashed, role }; // Create user object with hashed password and unique ID
