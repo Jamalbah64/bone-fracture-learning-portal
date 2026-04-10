@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { classifyUploadedImage } from "../api/classification";
 
 const ALLOWED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dcm", ".dicom"];
@@ -16,8 +16,6 @@ function looksMedicalName(name = "") {
 }
 
 function XrayUpload() {
-  const fileInputRef = useRef(null);
-
   const [patientId, setPatientId] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
@@ -29,7 +27,7 @@ function XrayUpload() {
 
   const validateFile = (file) => {
     if (!file) {
-      return "No file was selected.";
+      return "No file was dropped.";
     }
 
     const ext = getExtension(file.name);
@@ -70,14 +68,7 @@ function XrayUpload() {
 
     setSelectedFile(file);
     setError("");
-    setMessage(`Selected file: ${file.name}`);
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setResult(null);
-    handleAcceptedFile(file);
+    setMessage(`Dropped file: ${file.name}`);
   };
 
   const handleDrop = (e) => {
@@ -100,7 +91,7 @@ function XrayUpload() {
     }
 
     if (!selectedFile) {
-      setError("Please select a medical image to upload.");
+      setError("Please drag and drop a medical image.");
       return;
     }
 
@@ -147,13 +138,20 @@ function XrayUpload() {
     }
   };
 
+  const handleClearFile = () => {
+    setSelectedFile(null);
+    setResult(null);
+    setError("");
+    setMessage("");
+  };
+
   return (
     <section className="upload-page">
       <div className="upload-container">
         <div className="upload-left">
           <h1>AI Fracture Detection</h1>
           <p>
-            Upload an X-ray, MRI, or CT scan for AI-assisted analysis.
+            Drag and drop an X-ray, MRI, or CT scan for analysis.
           </p>
 
           <div className="upload-card">
@@ -174,32 +172,31 @@ function XrayUpload() {
                 e.preventDefault();
                 setDragActive(true);
               }}
+              onDragEnter={(e) => {
+                e.preventDefault();
+                setDragActive(true);
+              }}
               onDragLeave={(e) => {
                 e.preventDefault();
                 setDragActive(false);
               }}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              role="button"
-              tabIndex={0}
             >
               <p><strong>Drag and drop</strong> an X-ray, MRI, or CT scan here</p>
-              <p>or click to choose a file</p>
               <small>Accepted: JPG, JPEG, PNG, TIFF, DCM, DICOM</small>
             </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".png,.jpg,.jpeg,.tif,.tiff,.dcm,.dicom"
-              style={{ display: "none" }}
-              onChange={handleFileChange}
-            />
-
             {selectedFile && (
               <div className="selected-file-box">
-                <p><strong>Selected file:</strong> {selectedFile.name}</p>
+                <p><strong>Dropped file:</strong> {selectedFile.name}</p>
                 <p><strong>Size:</strong> {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleClearFile}
+                >
+                  Clear File
+                </button>
               </div>
             )}
 

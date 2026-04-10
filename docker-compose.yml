@@ -1,4 +1,12 @@
 services:
+  fastapi:
+    build:
+      context: ./fastapi
+    container_name: FrACT-fastapi
+    restart: always
+    ports:
+      - "8000:8000"
+
   server:
     build:
       context: ./server
@@ -8,6 +16,8 @@ services:
       - "4000:4000"
     env_file:
       - ./server/.env
+    environment:
+      FASTAPI_URL: http://fastapi:8000
     depends_on:
       - fastapi
 
@@ -20,11 +30,3 @@ services:
       - "3000:80"
     depends_on:
       - server
-
-  fastapi:
-    build:
-      context: ./python-api
-    container_name: FrACT-fastapi
-    restart: always
-    ports:
-      - "8000:8000"
