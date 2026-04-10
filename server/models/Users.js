@@ -5,7 +5,8 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['patient', 'clinician', 'admin'], default: 'patient' }
+    role: { type: String, enum: ['patient', 'radiologist', 'head_radiologist'], default: 'patient' },
+    staffId: { type: String, unique: true, sparse: true, trim: true }
 });
 userSchema.pre('save', async function () {
     if (!this.isModified('password')) return;
