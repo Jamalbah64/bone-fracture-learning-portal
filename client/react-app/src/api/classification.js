@@ -1,11 +1,18 @@
-export async function classifyUploadedImage({ file, patientId }) {
+export async function classifyUploadedImage(file) {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("You must be logged in to upload an image.");
+  }
+
   const formData = new FormData();
   formData.append("image", file);
-  formData.append("patientId", patientId);
 
   const response = await fetch("/api/classify", {
     method: "POST",
-    credentials: "include",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     body: formData,
   });
 

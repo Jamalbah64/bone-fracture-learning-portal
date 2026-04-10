@@ -8,15 +8,7 @@ function getExtension(name = "") {
   return index >= 0 ? name.slice(index).toLowerCase() : "";
 }
 
-function looksMedicalName(name = "") {
-  const lower = name.toLowerCase();
-  return ["xray", "x-ray", "radiograph", "mri", "ct", "dicom", "scan"].some((term) =>
-    lower.includes(term)
-  );
-}
-
 function XrayUpload() {
-  const [patientId, setPatientId] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -33,24 +25,7 @@ function XrayUpload() {
     const ext = getExtension(file.name);
 
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      return "Invalid image. Please upload only X-rays, MRIs, or CT scans.";
-    }
-
-    const mimeOk =
-      !file.type ||
-      [
-        "image/png",
-        "image/jpeg",
-        "image/jpg",
-        "image/tiff",
-        "application/dicom",
-        "application/octet-stream",
-      ].includes(file.type);
-
-    const nameOk = looksMedicalName(file.name);
-
-    if (!mimeOk && !nameOk) {
-      return "This file does not appear to be a supported medical image.";
+      return "Invalid image. Please upload JPG, JPEG, PNG, TIFF, DCM, or DICOM files.";
     }
 
     return "";
@@ -83,13 +58,6 @@ function XrayUpload() {
   };
 
   const handleRun = async () => {
-    const trimmedPatientId = patientId.trim();
-
-    if (!trimmedPatientId) {
-      setError("Please provide a patient ID.");
-      return;
-    }
-
     if (!selectedFile) {
       setError("Please drag and drop a medical image.");
       return;
@@ -107,29 +75,8 @@ function XrayUpload() {
     setMessage("");
 
     try {
-      const data = await classifyUploadedImage({
-        file: selectedFile,
-        patientId: trimmedPatientId,
-      });
-
+      const data = await classifyUploadedImage(selectedFile);
       setResult(data);
-
-      const topPrediction = data.predictions?.[0];
-      const timelineData = JSON.parse(localStorage.getItem("timelineData")) || {};
-
-      if (!timelineData[trimmedPatientId]) {
-        timelineData[trimmedPatientId] = [];
-      }
-
-      timelineData[trimmedPatientId].push({
-        date: new Date().toISOString().split("T")[0],
-        event: "Medical Image Analyzed",
-        filename: data.filename || selectedFile.name,
-        result: topPrediction?.code ?? "Unknown",
-        confidence: topPrediction?.confidence ?? null,
-      });
-
-      localStorage.setItem("timelineData", JSON.stringify(timelineData));
       setMessage("Analysis complete. Classification results are ready to view.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Classification failed");
@@ -150,22 +97,9 @@ function XrayUpload() {
       <div className="upload-container">
         <div className="upload-left">
           <h1>AI Fracture Detection</h1>
-          <p>
-            Drag and drop an X-ray, MRI, or CT scan for analysis.
-          </p>
+          <p>Drag and drop an X-ray, MRI, or CT scan for analysis.</p>
 
           <div className="upload-card">
-            <input
-              type="text"
-              placeholder="Enter Patient ID"
-              value={patientId}
-              onChange={(e) => {
-                setPatientId(e.target.value);
-                setError("");
-                setMessage("");
-              }}
-            />
-
             <div
               className={`drop-zone ${dragActive ? "drop-zone-active" : ""}`}
               onDragOver={(e) => {
@@ -204,7 +138,7 @@ function XrayUpload() {
               className="btn btn-primary"
               type="button"
               onClick={handleRun}
-              disabled={!patientId.trim() || !selectedFile || isLoading}
+              disabled={!selectedFile || isLoading}
             >
               {isLoading ? "Analyzing..." : "Run Analysis"}
             </button>
@@ -222,11 +156,6 @@ function XrayUpload() {
               <div className="result-row">
                 <span>Filename:</span>
                 <strong>{result.filename || selectedFile?.name}</strong>
-              </div>
-
-              <div className="result-row">
-                <span>Patient ID:</span>
-                <strong>{result.patient_id ?? patientId}</strong>
               </div>
 
               <div className="result-row">
