@@ -592,3 +592,268 @@ body {
   font-size: 13px;
   color: rgba(56, 189, 248, 0.9);
 }
+
+/* ---------- Upload: patient + preview ---------- */
+.upload-patient-input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  width: 100%;
+}
+
+.upload-preview-frame {
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.35);
+  max-height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-preview-img {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  display: block;
+}
+
+.preview-hint {
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.upload-success-msg {
+  color: #38bdf8;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.result-card-models {
+  margin-top: 20px;
+}
+
+/* ---------- Three model cards ---------- */
+.model-results-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+@media (max-width: 960px) {
+  .model-results-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.model-result-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  min-width: 0;
+}
+
+.model-result-title {
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: var(--primary);
+}
+
+.model-result-filename {
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.model-pred-block {
+  margin-top: 10px;
+}
+
+.model-result-empty {
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* ---------- Analytics index ---------- */
+.analytics-page h1 {
+  margin-bottom: 8px;
+}
+
+.analytics-intro {
+  margin-bottom: 20px;
+  max-width: 720px;
+}
+
+.analytics-empty {
+  padding: 20px;
+}
+
+.analytics-patient-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.analytics-patient-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.12s ease, background 0.2s ease;
+}
+
+.analytics-patient-link:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.analytics-patient-id {
+  font-weight: 600;
+  font-size: 1.1rem;
+  flex: 1;
+}
+
+.analytics-chevron {
+  color: var(--primary);
+  font-size: 1.2rem;
+}
+
+/* ---------- Patient analytics detail ---------- */
+.patient-analytics-breadcrumb {
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+
+.patient-analytics-breadcrumb a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.patient-analytics-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.patient-scan-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.patient-scan-row {
+  padding: 16px;
+}
+
+.patient-scan-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+
+.patient-scan-filename {
+  font-size: 13px;
+}
+
+.patient-scan-body {
+  display: grid;
+  grid-template-columns: minmax(200px, 320px) 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .patient-scan-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.patient-scan-image-col {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.patient-scan-image {
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  display: block;
+}
+
+.patient-scan-image-placeholder {
+  padding: 40px 16px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.patient-scan-models-col {
+  min-width: 0;
+}
+
+/* ---------- Settings: local data ---------- */
+.settings-page h1 {
+  margin-bottom: 8px;
+}
+
+.settings-local-data {
+  margin-top: 24px;
+  padding: 20px;
+}
+
+.settings-local-data h2 {
+  margin-bottom: 8px;
+  font-size: 1.15rem;
+}
+
+.settings-local-desc {
+  margin-bottom: 16px;
+  max-width: 640px;
+  line-height: 1.5;
+}
+
+.settings-local-desc code {
+  font-size: 0.9em;
+}
+
+.settings-notice {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #86efac;
+  font-size: 14px;
+}
+
+.settings-clear-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.settings-clear-all {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+@media (max-width: 600px) {
+  .settings-clear-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

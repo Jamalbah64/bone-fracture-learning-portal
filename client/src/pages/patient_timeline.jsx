@@ -1,15 +1,35 @@
 import { useState, useEffect } from "react";
+import { TIMELINE_STORAGE_KEY } from "../utils/analyticsStore";
 
 function PatientTimeline() {
   const [patients, setPatients] = useState({});
   const [selectedPatient, setSelectedPatient] = useState(null);
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("timelineData")) || {};
-    setPatients(stored);
+    function load() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(TIMELINE_STORAGE_KEY)) || {};
+        setPatients(stored);
+        const ids = Object.keys(stored);
+        setSelectedPatient((prev) => {
+          if (ids.length === 0) return null;
+          if (ids.length === 1) return ids[0];
+          if (prev && ids.includes(prev)) return prev;
+          return null;
+        });
+      } catch {
+        setPatients({});
+        setSelectedPatient(null);
+      }
+    }
 
-    const ids = Object.keys(stored);
-    if (ids.length === 1) setSelectedPatient(ids[0]);
+    load();
+    window.addEventListener("storage", load);
+    window.addEventListener("timeline-updated", load);
+    return () => {
+      window.removeEventListener("storage", load);
+      window.removeEventListener("timeline-updated", load);
+    };
   }, []);
 
   const patientIds = Object.keys(patients);

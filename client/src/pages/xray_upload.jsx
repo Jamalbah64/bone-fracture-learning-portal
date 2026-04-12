@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { classifyUploadedImage } from "../api/classification";
+import ModelResultsGrid from "../components/ModelResultsGrid";
+import { appendScanRecord, fileToDataUrl } from "../utils/analyticsStore";
+import { splitApiResultIntoModels } from "../utils/scanModels";
 
 const ALLOWED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dcm", ".dicom"];
 
@@ -10,12 +13,26 @@ function getExtension(name = "") {
 
 function XrayUpload() {
   const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [patientId, setPatientId] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState(null);
+  const [models, setModels] = useState(null);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [selectedFile]);
 
   const validateFile = (file) => {
     if (!file) {
@@ -43,7 +60,7 @@ function XrayUpload() {
 
     setSelectedFile(file);
     setError("");
-    setMessage(`Dropped file: ${file.name}`);
+    setMessage(`Selected: ${file.name}`);
   };
 
   const handleDrop = (e) => {
@@ -53,7 +70,7 @@ function XrayUpload() {
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
 
-    setResult(null);
+    setModels(null);
     handleAcceptedFile(file);
   };
 
@@ -71,13 +88,22 @@ function XrayUpload() {
 
     setIsLoading(true);
     setError("");
-    setResult(null);
+    setModels(null);
     setMessage("");
 
     try {
       const data = await classifyUploadedImage(selectedFile);
-      setResult(data);
-      setMessage("Analysis complete. Classification results are ready to view.");
+      const modelRuns = splitApiResultIntoModels(data);
+      setModels(modelRuns);
+
+      const imageDataUrl = await fileToDataUrl(selectedFile);
+      appendScanRecord(patientId, {
+        filename: data.filename || selectedFile.name,
+        imageDataUrl,
+        models: modelRuns,
+      });
+
+      setMessage("Analysis complete. Results saved under Analytics for this patient.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Classification failed");
     } finally {
@@ -87,7 +113,7 @@ function XrayUpload() {
 
   const handleClearFile = () => {
     setSelectedFile(null);
-    setResult(null);
+    setModels(null);
     setError("");
     setMessage("");
   };
@@ -97,9 +123,20 @@ function XrayUpload() {
       <div className="upload-container">
         <div className="upload-left">
           <h1>AI Fracture Detection</h1>
-          <p>Drag and drop an X-ray, MRI, or CT scan for analysis.</p>
+          <p>
+            Drag and drop a scan, confirm the preview, then run analysis. Enter a patient ID
+            so results appear under Analytics for that patient.
+          </p>
 
           <div className="upload-card">
+            <input
+              type="text"
+              className="upload-patient-input"
+              placeholder="Patient ID (for Analytics)"
+              value={patientId}
+              onChange={(e) => setPatientId(e.target.value)}
+            />
+
             <div
               className={`drop-zone ${dragActive ? "drop-zone-active" : ""}`}
               onDragOver={(e) => {
@@ -122,14 +159,14 @@ function XrayUpload() {
 
             {selectedFile && (
               <div className="selected-file-box">
-                <p><strong>Dropped file:</strong> {selectedFile.name}</p>
+                <p><strong>File:</strong> {selectedFile.name}</p>
                 <p><strong>Size:</strong> {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={handleClearFile}
                 >
-                  Clear File
+                  Clear file
                 </button>
               </div>
             )}
@@ -140,51 +177,32 @@ function XrayUpload() {
               onClick={handleRun}
               disabled={!selectedFile || isLoading}
             >
-              {isLoading ? "Analyzing..." : "Run Analysis"}
+              {isLoading ? "Running models…" : "Run analysis"}
             </button>
 
             {error && <div className="error-box">{error}</div>}
-            {message && <div style={{ color: "#38bdf8", marginTop: 10 }}>{message}</div>}
+            {message && <div className="upload-success-msg">{message}</div>}
           </div>
         </div>
 
         <div className="upload-right">
-          {result && (
-            <div className="result-card">
-              <h3>Analysis Result</h3>
-              <div className="result-row">
-                <span>Filename:</span>
-                <strong>{result.filename || selectedFile?.name}</strong>
+          {previewUrl && (
+            <div className="preview-card">
+              <h3>Image preview</h3>
+              <p className="muted preview-hint">
+                {isLoading ? "Processing…" : "Uploaded image shown below"}
+              </p>
+              <div className="upload-preview-frame">
+                <img src={previewUrl} alt="Selected scan preview" className="upload-preview-img" />
               </div>
-              <div className="result-row">
-                <span>Classifications found:</span>
-                <strong>{result.num_labels}</strong>
-              </div>
+            </div>
+          )}
 
-              {result.predictions?.map((pred, i) => (
-                <div key={i} style={{ marginTop: 12 }}>
-                  <div className="result-row">
-                    <span>AO Code:</span>
-                    <strong>{pred.code}</strong>
-                  </div>
-                  <div className="result-row">
-                    <span>Confidence:</span>
-                    <strong>{(pred.confidence * 100).toFixed(1)}%</strong>
-                  </div>
-                  <div className="confidence-bar">
-                    <div
-                      className="confidence-fill"
-                      style={{ width: `${pred.confidence * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-
-              {result.num_labels === 0 && (
-                <p style={{ color: "#94a3b8", marginTop: 10 }}>
-                  No fracture classifications found for this image.
-                </p>
-              )}
+          {models && models.length > 0 && (
+            <div className="result-card result-card-models">
+              <h3>Model outputs</h3>
+              <p className="muted">Model analytics average between three models</p>
+              <ModelResultsGrid models={models} />
             </div>
           )}
         </div>

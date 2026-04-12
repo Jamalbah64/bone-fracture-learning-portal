@@ -9,6 +9,7 @@ import {
 import "./App.css";
 import NavBar from "./components/NavBar";
 import Analytics from "./pages/analytics";
+import PatientAnalyticsDetail from "./pages/patient_analytics_detail";
 import Dashboard from "./pages/dashboard";
 import Login from "./pages/loginPage";
 import PatientTimeline from "./pages/patient_timeline";
@@ -132,6 +133,14 @@ function App() {
               element={
                 <ProtectedRoute user={user}>
                   <Analytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics/patient/:patientId"
+              element={
+                <ProtectedRoute user={user}>
+                  <PatientAnalyticsDetail />
                 </ProtectedRoute>
               }
             />
