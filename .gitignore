@@ -7,3 +7,5 @@ venv/
 .venv/
 env/
 ENV/
+__pycache__/
+*.py[cod]
