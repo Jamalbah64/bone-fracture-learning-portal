@@ -2,14 +2,8 @@ import { useEffect, useState } from "react";
 import { classifyUploadedImage } from "../api/classification";
 import ModelResultsGrid from "../components/ModelResultsGrid";
 import { appendScanRecord, fileToDataUrl } from "../utils/analyticsStore";
+import { validateMedicalImage } from "../utils/medicalImageValidation";
 import { splitApiResultIntoModels } from "../utils/scanModels";
-
-const ALLOWED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dcm", ".dicom"];
-
-function getExtension(name = "") {
-  const index = name.lastIndexOf(".");
-  return index >= 0 ? name.slice(index).toLowerCase() : "";
-}
 
 function XrayUpload() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -34,26 +28,12 @@ function XrayUpload() {
     };
   }, [selectedFile]);
 
-  const validateFile = (file) => {
-    if (!file) {
-      return "No file was dropped.";
-    }
-
-    const ext = getExtension(file.name);
-
-    if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      return "Invalid image. Please upload JPG, JPEG, PNG, TIFF, DCM, or DICOM files.";
-    }
-
-    return "";
-  };
-
   const handleAcceptedFile = (file) => {
-    const validationMessage = validateFile(file);
+    const validation = validateMedicalImage(file);
 
-    if (validationMessage) {
+    if (!validation.valid) {
       setSelectedFile(null);
-      setError(validationMessage);
+      setError(validation.reason);
       setMessage("");
       return;
     }
@@ -80,9 +60,9 @@ function XrayUpload() {
       return;
     }
 
-    const validationMessage = validateFile(selectedFile);
-    if (validationMessage) {
-      setError(validationMessage);
+    const validation = validateMedicalImage(selectedFile);
+    if (!validation.valid) {
+      setError(validation.reason);
       return;
     }
 
