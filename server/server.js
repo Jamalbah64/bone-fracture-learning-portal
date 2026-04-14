@@ -27,7 +27,7 @@ app.use("/api/auth", authRoutes);
 app.use(
     "/api/classify",
     authMiddleware,
-    requireRole("clinician", "admin"),
+    requireRole("radiologist", "head_radiologist"),
     classificationRoute
 );
 

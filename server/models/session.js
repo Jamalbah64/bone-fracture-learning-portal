@@ -21,7 +21,13 @@ const sessionSchema = new mongoose.Schema(
         },
         role: {
             type: String,
-            enum: ["patient", "clinician", "admin"],
+            enum: [
+                "patient",
+                "radiologist",
+                "head_radiologist",
+                "clinician",
+                "admin",
+            ],
             required: true,
         },
         userAgent: {

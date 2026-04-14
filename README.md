@@ -9,7 +9,7 @@ Currently, our application uses a dummy model from huggingface.co. In order to u
 4. Copy the token value
 5. Past the value in server/.env for the variable 'HF_API_KEY'
 
-To start the application, run 'npm run dev' in the client/react-app directory, and 'node server.js' in the server directory
+To start the application, run 'npm run dev' in the client directory, and 'node server.js' in the server directory
 
 Create an account, and then login to enter the site.
 Once in the site, click on the various tabs in the navbar to interact with the content.
