@@ -857,3 +857,271 @@ body {
     align-items: stretch;
   }
 }
+
+/* ---------- Nav role badge ---------- */
+.nav-role-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.30);
+  color: var(--primary);
+  text-transform: capitalize;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+/* ---------- Share button ---------- */
+.btn-share {
+  font-size: 12px;
+  padding: 4px 12px;
+  min-height: 28px;
+  margin-top: 0;
+}
+
+.btn-sm {
+  font-size: 12px;
+  padding: 4px 12px;
+  min-height: 28px;
+  margin-top: 0;
+}
+
+.btn-danger {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.btn-danger:hover {
+  background: rgba(248, 113, 113, 0.22);
+}
+
+/* ---------- Modal ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 480px;
+  background: #131b2e;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  color: white;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.modal-input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  width: 100%;
+  outline: none;
+}
+
+.modal-input:focus {
+  border-color: var(--primary);
+}
+
+.modal-hint {
+  font-size: 13px;
+}
+
+.modal-success {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #86efac;
+  font-size: 14px;
+}
+
+/* ---------- Share search results ---------- */
+.share-results {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.share-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 14px;
+}
+
+.share-result-item:last-child {
+  border-bottom: none;
+}
+
+.share-result-item.clickable {
+  cursor: pointer;
+}
+
+.share-result-item.clickable:hover {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.share-role-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  text-transform: capitalize;
+}
+
+/* ---------- Shared page ---------- */
+.shared-page h1 {
+  margin-bottom: 8px;
+}
+
+.shared-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.shared-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.shared-item {
+  padding: 16px;
+}
+
+.shared-item-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.shared-message {
+  font-style: italic;
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+/* ---------- Manage patients page ---------- */
+.manage-patients-page h1 {
+  margin-bottom: 8px;
+}
+
+.assign-form {
+  margin-top: 20px;
+  padding: 20px;
+}
+
+.assign-form h2 {
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+}
+
+.assign-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 700px) {
+  .assign-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.assign-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assignment-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.assignment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+}
+
+.assignment-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: 14px;
+}
+
+/* ---------- Pill badge ---------- */
+.pill {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: var(--primary);
+  margin-bottom: 12px;
+}

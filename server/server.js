@@ -8,6 +8,10 @@ import authRoutes from "./auth/authRoutes.js";
 import authMiddleware from "./auth/middleware/auth.js";
 import requireRole from "./auth/middleware/requireRole.js";
 import classificationRoute from "./routes/classification.js";
+import scansRoute from "./routes/scans.js";
+import patientsRoute from "./routes/patients.js";
+import assignmentsRoute from "./routes/assignments.js";
+import sharesRoute from "./routes/shares.js";
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 4000);
@@ -30,6 +34,16 @@ app.use(
     requireRole("radiologist", "head_radiologist"),
     classificationRoute
 );
+
+app.use("/api/scans", authMiddleware, scansRoute);
+app.use("/api/patients", authMiddleware, patientsRoute);
+app.use(
+    "/api/assignments",
+    authMiddleware,
+    requireRole("radiologist", "head_radiologist", "patient"),
+    assignmentsRoute
+);
+app.use("/api/shares", authMiddleware, sharesRoute);
 
 app.get(
     "/api/patient-portal",

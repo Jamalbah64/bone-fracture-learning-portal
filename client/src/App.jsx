@@ -16,14 +16,15 @@ import PatientTimeline from "./pages/patient_timeline";
 import Register from "./pages/registerPage";
 import Settings from "./pages/settings";
 import XrayUpload from "./pages/xray_upload";
-
-const FULL_ACCESS_ROLES = ["radiologist", "head_radiologist", "clinician", "admin"];
+import Shared from "./pages/shared";
+import ManagePatients from "./pages/manage_patients";
 
 function canAccessPath(role, path) {
   if (!role) return false;
-  if (FULL_ACCESS_ROLES.includes(role)) return true;
+  if (role === "head_radiologist") return true;
+  if (role === "radiologist") return true;
   if (role === "patient") {
-    return ["/", "/timeline", "/settings", "/patients"].some(
+    return ["/", "/timeline", "/settings", "/patients", "/shared", "/analytics"].some(
       (allowed) => path === allowed || path.startsWith(`${allowed}/`)
     );
   }
@@ -93,7 +94,7 @@ function App() {
             <Route
               path="/"
               element={
-                user ? <Dashboard /> : <Navigate to="/login" replace />
+                user ? <Dashboard user={user} /> : <Navigate to="/login" replace />
               }
             />
             <Route
@@ -141,6 +142,22 @@ function App() {
               element={
                 <ProtectedRoute user={user}>
                   <PatientAnalyticsDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/shared"
+              element={
+                <ProtectedRoute user={user}>
+                  <Shared />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manage"
+              element={
+                <ProtectedRoute user={user}>
+                  <ManagePatients user={user} />
                 </ProtectedRoute>
               }
             />

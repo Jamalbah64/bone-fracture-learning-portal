@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./NavBar.css";
 
-const FULL_ACCESS_ROLES = ["radiologist", "head_radiologist", "clinician", "admin"];
+const STAFF_ROLES = ["radiologist", "head_radiologist"];
 
 function NavBar({ user }) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const role = user?.role;
-  const hasFullAccess = FULL_ACCESS_ROLES.includes(role);
+  const isStaff = STAFF_ROLES.includes(role);
+  const isHead = role === "head_radiologist";
 
   async function handleLogout() {
     try {
@@ -18,7 +19,7 @@ function NavBar({ user }) {
         credentials: "include",
       });
     } catch {
-      // ignore network failure, still reset UI
+      // ignore
     }
 
     localStorage.removeItem("token");
@@ -42,22 +43,14 @@ function NavBar({ user }) {
   return (
     <nav className="nav">
       <div className="nav-inner container">
-        {/* Brand */}
-        <Link
-          to="/"
-          className="brand"
-          onClick={() => setMenuOpen(false)}
-        >
+        <Link to="/" className="brand" onClick={() => setMenuOpen(false)}>
           <div className="brand-mark">🦴</div>
           <div className="brand-text">
             <div className="brand-name">FractureDetection</div>
-            <div className="brand-sub">
-              AI Fracture Detection + Learning
-            </div>
+            <div className="brand-sub">AI Fracture Detection + Learning</div>
           </div>
         </Link>
 
-        {/* Nav Links */}
         <ul className={`nav-links ${menuOpen ? "open" : ""}`}>
           <li>
             <Link
@@ -69,7 +62,7 @@ function NavBar({ user }) {
             </Link>
           </li>
 
-          {hasFullAccess && (
+          {isStaff && (
             <li>
               <Link
                 to="/upload"
@@ -81,29 +74,51 @@ function NavBar({ user }) {
             </li>
           )}
 
-          {hasFullAccess && (
-            <li>
-              <Link
-                to="/analytics"
-                className={isActive("/analytics") ? "nav-link active" : "nav-link"}
-                onClick={() => setMenuOpen(false)}
-              >
-                Analytics
-              </Link>
-            </li>
-          )}
+          <li>
+            <Link
+              to="/analytics"
+              className={isActive("/analytics") ? "nav-link active" : "nav-link"}
+              onClick={() => setMenuOpen(false)}
+            >
+              Analytics
+            </Link>
+          </li>
 
           <li>
             <Link
               to="/timeline"
-              className={isActive("/timeline") || isActive("/patients")
-                ? "nav-link active"
-                : "nav-link"}
+              className={
+                isActive("/timeline") || isActive("/patients")
+                  ? "nav-link active"
+                  : "nav-link"
+              }
               onClick={() => setMenuOpen(false)}
             >
               Timeline
             </Link>
           </li>
+
+          <li>
+            <Link
+              to="/shared"
+              className={isActive("/shared") ? "nav-link active" : "nav-link"}
+              onClick={() => setMenuOpen(false)}
+            >
+              Shared
+            </Link>
+          </li>
+
+          {(isHead || role === "radiologist") && (
+            <li>
+              <Link
+                to="/manage"
+                className={isActive("/manage") ? "nav-link active" : "nav-link"}
+                onClick={() => setMenuOpen(false)}
+              >
+                {isHead ? "Manage" : "Patients"}
+              </Link>
+            </li>
+          )}
 
           <li>
             <Link
@@ -116,21 +131,25 @@ function NavBar({ user }) {
           </li>
 
           <li className="mobile-login">
-            <button className="nav-login" onClick={handleLogout}>Logout</button>
+            <button className="nav-login" onClick={handleLogout}>
+              Logout
+            </button>
           </li>
         </ul>
 
-        {/* Desktop Logout */}
         <div className="nav-right">
-          {user && <div className="nav-user">{user.username}</div>}
-          <button className="nav-login desktop-only" onClick={handleLogout}>Logout</button>
+          {user && (
+            <div className="nav-user">
+              {user.username}{" "}
+              <span className="nav-role-badge">{role?.replace("_", " ")}</span>
+            </div>
+          )}
+          <button className="nav-login desktop-only" onClick={handleLogout}>
+            Logout
+          </button>
         </div>
 
-        {/* Hamburger */}
-        <div
-          className="hamburger"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
+        <div className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
           ☰
         </div>
       </div>
