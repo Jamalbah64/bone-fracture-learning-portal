@@ -103,6 +103,7 @@ def health():
 # Legacy filestem prediction route intentionally removed for image-only workflow
 
 
+
 @app.post("/predict-upload")
 async def predict_upload(image: UploadFile = File(...)):
     filename = image.filename or "uploaded_image"
