@@ -15,7 +15,7 @@ services:
     ports:
       - "4000:4000"
     env_file:
-      - ./server/.env
+      - ./server/.env.example
     environment:
       FASTAPI_URL: http://fastapi:8000
     depends_on:

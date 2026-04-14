@@ -9,7 +9,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="mock_api")
+app = FastAPI()
 
 UPLOAD_DIR = Path("./temp_uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
