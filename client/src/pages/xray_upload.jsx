@@ -72,18 +72,11 @@ function XrayUpload() {
     setMessage("");
 
     try {
-      const data = await classifyUploadedImage(selectedFile);
+      const data = await classifyUploadedImage(selectedFile, patientId);
       const modelRuns = splitApiResultIntoModels(data);
       setModels(modelRuns);
 
-      const imageDataUrl = await fileToDataUrl(selectedFile);
-      appendScanRecord(patientId, {
-        filename: data.filename || selectedFile.name,
-        imageDataUrl,
-        models: modelRuns,
-      });
-
-      setMessage("Analysis complete. Results saved under Analytics for this patient.");
+      setMessage("Analysis complete. Results saved to the server for this patient.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Classification failed");
     } finally {
@@ -112,7 +105,7 @@ function XrayUpload() {
             <input
               type="text"
               className="upload-patient-input"
-              placeholder="Patient ID (for Analytics)"
+              placeholder="Patient username (links scan to their account)"
               value={patientId}
               onChange={(e) => setPatientId(e.target.value)}
             />
