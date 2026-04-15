@@ -66,27 +66,25 @@ router.post("/", upload.single("file"), handleMulterErrors, async (req, res) => 
       return res.status(400).json({ error: validation.reason });
     }
 
-    // Extract the filename for use with FastAPI
-    const filestem = path.basename(req.file.path, path.extname(req.file.path));
+    // Read the file and send it to FastAPI
+    const fileBuffer = fs.readFileSync(req.file.path);
 
-    // Call FastAPI for prediction
-    const response = await fetch(`${FASTAPI_URL}/predict`, {
+    // Create FormData with the file using native Node.js FormData
+    const formData = new FormData();
+    const blob = new Blob([fileBuffer], { type: req.file.mimetype || 'application/octet-stream' });
+    formData.append('image', blob, req.file.originalname);
+
+    // Call FastAPI for prediction with the actual image file
+    const response = await fetch(`${FASTAPI_URL}/predict-upload`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filestem }),
+      body: formData,
     });
 
     const contentType = response.headers.get("content-type") || "";
-
-    if (!contentType.includes("application/json")) {
-      const raw = await response.text();
-      return res.status(502).json({
-        error: "FastAPI returned non-JSON content",
-        details: raw.slice(0, 300),
-      });
-    }
-
     const data = await response.json();
+
+    console.log("FastAPI Response Status:", response.status);
+    console.log("FastAPI Response Data:", data);
 
     if (!response.ok) {
       return res.status(response.status).json({
