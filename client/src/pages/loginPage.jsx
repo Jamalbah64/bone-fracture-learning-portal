@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
-/**
- * Login Component
- * Handles user authentication.
- * Collects username + password and sends to backend.
- */
 function Login() {
   const navigate = useNavigate();
 
@@ -13,10 +8,12 @@ function Login() {
   const [password, setPassword] = useState("");
   const [staffId, setStaffId] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -30,33 +27,45 @@ function Login() {
 
       if (!response.ok) {
         setError(data.error || "Login failed");
+        setLoading(false);
         return;
       }
 
-      try {
-        window.dispatchEvent(new Event("auth-change"));
-      } catch {
-        // ignore
-      }
+      window.dispatchEvent(new Event("auth-change"));
 
       navigate("/");
     } catch {
-      setError("An unexpected error occurred");
+      setError("Unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <h2>Welcome Back</h2>
-        <p className="muted">Login to continue</p>
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4">
 
-        <form onSubmit={handleSubmit} className="auth-form">
+      {/* CARD */}
+      <div className="w-full max-w-md bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-2xl">
+
+        {/* HEADER */}
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-white">
+            Welcome Back
+          </h2>
+          <p className="text-white/60 mt-2">
+            Sign in to continue to AI Fracture System
+          </p>
+        </div>
+
+        {/* FORM */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+
           <input
             type="text"
             placeholder="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-sky-400"
             required
           />
 
@@ -65,25 +74,41 @@ function Login() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-sky-400"
             required
           />
 
           <input
             type="text"
-            placeholder="Staff ID (radiologists only)"
+            placeholder="Staff ID (optional)"
             value={staffId}
-            onChange={(e) => setStaffId(e.target.value.replace(/\D/g, ""))}
+            onChange={(e) =>
+              setStaffId(e.target.value.replace(/\D/g, ""))
+            }
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-sky-400"
           />
 
-          {error && <div className="error-box">{error}</div>}
+          {error && (
+            <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/30 p-3 rounded-xl">
+              {error}
+            </div>
+          )}
 
-          <button className="btn btn-primary" type="submit">
-            Login
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-semibold transition disabled:opacity-50"
+          >
+            {loading ? "Signing in..." : "Login"}
           </button>
         </form>
 
-        <p className="auth-switch">
-          Don’t have an account? <Link to="/register">Register</Link>
+        {/* FOOTER */}
+        <p className="text-center text-white/50 text-sm mt-6">
+          Don’t have an account?{" "}
+          <Link to="/register" className="text-sky-400 hover:underline">
+            Register
+          </Link>
         </p>
       </div>
     </div>

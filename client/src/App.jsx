@@ -6,7 +6,7 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
-import "./App.css";
+
 import NavBar from "./components/NavBar";
 import Analytics from "./pages/analytics";
 import PatientAnalyticsDetail from "./pages/patient_analytics_detail";
@@ -17,25 +17,37 @@ import Register from "./pages/registerPage";
 import Settings from "./pages/settings";
 import XrayUpload from "./pages/xray_upload";
 
-const FULL_ACCESS_ROLES = ["radiologist", "head_radiologist", "clinician", "admin"];
+const FULL_ACCESS_ROLES = [
+  "radiologist",
+  "head_radiologist",
+  "clinician",
+  "admin",
+];
 
 function canAccessPath(role, path) {
   if (!role) return false;
+
   if (FULL_ACCESS_ROLES.includes(role)) return true;
+
   if (role === "patient") {
     return ["/", "/timeline", "/settings", "/patients"].some(
-      (allowed) => path === allowed || path.startsWith(`${allowed}/`)
+      (allowed) =>
+        path === allowed || path.startsWith(`${allowed}/`)
     );
   }
+
   return false;
 }
 
 function ProtectedRoute({ user, children }) {
   const location = useLocation();
+
   if (!user) return <Navigate to="/login" replace />;
+
   if (!canAccessPath(user.role, location.pathname)) {
     return <Navigate to="/" replace />;
   }
+
   return children;
 }
 
@@ -80,30 +92,52 @@ function App() {
   }
 
   if (!authChecked) {
-    return <div className="container">Checking authentication...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0b1220] text-white">
+        Checking authentication...
+      </div>
+    );
   }
 
   return (
     <BrowserRouter>
+      {/* NAVBAR (FULL WIDTH ALWAYS) */}
       {user && <NavBar user={user} />}
 
-      <main className="content">
-        <div className="container">
+      {/* APP SHELL */}
+      <div className="min-h-screen flex flex-col bg-[#0b1220] text-white">
+
+        {/* MAIN AREA */}
+        <main className="flex-1 w-full">
+
+          {/* IMPORTANT FIX:
+              NO global centering wrapper anymore.
+              Each page controls its own layout. */}
           <Routes>
+
+            {/* PUBLIC */}
             <Route
               path="/"
               element={
                 user ? <Dashboard /> : <Navigate to="/login" replace />
               }
             />
+
             <Route
               path="/login"
-              element={user ? <Navigate to="/" replace /> : <Login />}
+              element={
+                user ? <Navigate to="/" replace /> : <Login />
+              }
             />
+
             <Route
               path="/register"
-              element={user ? <Navigate to="/" replace /> : <Register />}
+              element={
+                user ? <Navigate to="/" replace /> : <Register />
+              }
             />
+
+            {/* PROTECTED */}
             <Route
               path="/upload"
               element={
@@ -112,6 +146,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/timeline"
               element={
@@ -120,6 +155,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/patients/:patientId"
               element={
@@ -128,6 +164,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/analytics"
               element={
@@ -136,6 +173,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/analytics/patient/:patientId"
               element={
@@ -144,6 +182,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/settings"
               element={
@@ -152,18 +191,19 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* FALLBACK */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </div>
-      </main>
+        </main>
 
-      {user && (
-        <footer className="footer">
-          <div className="container">
-            <p>© {new Date().getFullYear()} Bone Fracture Learning Portal</p>
-          </div>
-        </footer>
-      )}
+        {/* FOOTER */}
+        {user && (
+          <footer className="border-t border-white/10 py-6 text-center text-white/50 text-sm">
+            © {new Date().getFullYear()} Bone Fracture Learning Portal
+          </footer>
+        )}
+      </div>
     </BrowserRouter>
   );
 }

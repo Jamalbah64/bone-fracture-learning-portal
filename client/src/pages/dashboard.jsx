@@ -1,105 +1,108 @@
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Dashboard() {
   const navigate = useNavigate();
 
+  const leftRef = useRef(null);
+  const rightRef = useRef(null);
+
+  const [leftVisible, setLeftVisible] = useState(false);
+  const [rightVisible, setRightVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.target === leftRef.current) {
+            setLeftVisible(entry.isIntersecting);
+          }
+          if (entry.target === rightRef.current) {
+            setRightVisible(entry.isIntersecting);
+          }
+        });
+      },
+      {
+        threshold: 0.25,
+      }
+    );
+
+    if (leftRef.current) observer.observe(leftRef.current);
+    if (rightRef.current) observer.observe(rightRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <>
-      {/* HERO SECTION */}
-      <header className="hero">
-        <div className="hero-grid">
+    <div className="min-h-screen w-full bg-[#0b1220] overflow-x-hidden">
 
-          {/* MAIN INTRO */}
-          <div className="hero-content">
-            <span className="pill">AI Medical Imaging Platform</span>
+      {/* HERO */}
+      <section className="min-h-screen flex items-center px-6 md:px-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 w-full max-w-7xl mx-auto items-center gap-20">
 
-            <h1>Bone Fracture Detection & Patient Tracking System</h1>
+          {/* LEFT TEXT */}
+          <div
+            ref={leftRef}
+            className={`
+              transition-all duration-1000 ease-out
+              ${leftVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}
+            `}
+          >
+            <h1 className="text-5xl md:text-7xl font-bold leading-tight">
+              AI Fracture <br />
+              <span className="text-sky-400">Detection System</span>
+            </h1>
 
-            <p>
-              This platform uses AI to analyze X-ray images and assist in
-              fracture detection, patient tracking, and medical data
-              visualization.
+            <p className="mt-6 text-lg md:text-xl text-white/70 max-w-xl leading-relaxed">
+              This platform uses artificial intelligence to analyze medical scans
+              such as X-rays, CT, and MRI images. It runs multiple deep learning
+              models and combines their predictions to improve accuracy. The system
+              helps doctors detect fractures faster while maintaining patient
+              history for long-term clinical tracking.
             </p>
 
             <button
-              className="btn btn-primary"
               onClick={() => navigate("/upload")}
+              className="
+                mt-8 px-7 py-3 text-lg font-semibold rounded-2xl
+                backdrop-blur-xl bg-white/10 border border-white/20
+                text-white hover:bg-white/20 hover:scale-[1.04]
+                transition-all duration-300 shadow-lg
+              "
             >
-              Start AI Analysis
+              Upload X-Ray
             </button>
           </div>
 
-          {/* INFO PANEL */}
-          <div className="hero-card">
-            <h3>System Overview</h3>
+          {/* RIGHT GIF (WIDER NOW) */}
+          <div
+            ref={rightRef}
+            className={`
+              flex justify-end
+              transition-all duration-1000 ease-out
+              ${rightVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"}
+            `}
+          >
+            <div className="w-full max-w-3xl">
 
-            <ul>
-              <li>AI-powered X-ray classification</li>
-              <li>Patient-based timeline tracking</li>
-              <li>Medical image history storage</li>
-              <li>Confidence-based predictions</li>
-            </ul>
+              <div className="rounded-3xl overflow-hidden border border-white/10 shadow-2xl h-[75vh]">
+                <img
+                  src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExb2h2eWZxZ3ZkY2R0b2JxZ2h0d2V3Z3F3b2R0Z2Z3b2R0Z2Z3/3o7TKMt1VVNkHV2PaE/giphy.gif"
+                  alt="AI Processing"
+                  className="w-full h-full object-cover"
+                />
+              </div>
 
-            <p className="muted" style={{ marginTop: 10 }}>
-              All analysis is for educational and assistive purposes only.
-            </p>
+              <p className="text-right text-white/50 mt-4 text-sm">
+                Live AI inference visualization
+              </p>
+
+            </div>
           </div>
 
         </div>
-      </header>
-
-      {/* FEATURE SECTION (INFO ONLY — NO EXTRA BUTTONS) */}
-      <section className="grid">
-        <div className="card">
-          <h3>AI Fracture Detection</h3>
-          <p>
-            Upload medical images and receive AI predictions with confidence
-            scores and classification results.
-          </p>
-        </div>
-
-        <div className="card">
-          <h3>Patient Timeline</h3>
-          <p>
-            View historical scans organized by patient ID with chronological
-            medical events.
-          </p>
-        </div>
-
-        <div className="card">
-          <h3>Analytics Dashboard</h3>
-          <p>
-            Visualize trends, detection frequency, and system insights from
-            uploaded medical data.
-          </p>
-        </div>
       </section>
-
-      {/* FINAL CALL TO ACTION (ONLY ONE UPLOAD BUTTON) */}
-      <section className="ai-section">
-        <div className="ai-header">
-          <h2>Ready to Analyze a Scan?</h2>
-          <p>
-            Upload an X-ray or medical image to begin AI-assisted fracture detection.
-          </p>
-        </div>
-
-        <div className="ai-card" style={{ textAlign: "center" }}>
-          <h3>AI Upload Tool</h3>
-
-          <p className="muted">
-            Supports X-ray, MRI, CT scan images for analysis.
-          </p>
-
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate("/upload")}
-          >
-            Go to Upload Tool
-          </button>
-        </div>
-      </section>
-    </>
+    </div>
   );
 }
 
