@@ -1,104 +1,126 @@
 import { useState, useEffect } from "react";
-import { TIMELINE_STORAGE_KEY } from "../utils/analyticsStore";
+import { useParams } from "react-router-dom";
+import { fetchScans, scanImageUrl } from "../api/scans";
+import { fetchPatients } from "../api/patients";
+import ShareButton from "../components/ShareButton";
 
 function PatientTimeline() {
-  const [patients, setPatients] = useState({});
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  const { patientId: routePatient } = useParams();
+  const [patients, setPatients] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(
+    routePatient ? decodeURIComponent(routePatient) : null
+  );
+  const [scans, setScans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [scanLoading, setScanLoading] = useState(false);
 
   useEffect(() => {
-    function load() {
-      try {
-        const stored = JSON.parse(localStorage.getItem(TIMELINE_STORAGE_KEY)) || {};
-        setPatients(stored);
-        const ids = Object.keys(stored);
-        setSelectedPatient((prev) => {
-          if (ids.length === 0) return null;
-          if (ids.length === 1) return ids[0];
-          if (prev && ids.includes(prev)) return prev;
-          return null;
-        });
-      } catch {
-        setPatients({});
-        setSelectedPatient(null);
-      }
-    }
-
-    load();
-    window.addEventListener("storage", load);
-    window.addEventListener("timeline-updated", load);
-    return () => {
-      window.removeEventListener("storage", load);
-      window.removeEventListener("timeline-updated", load);
-    };
+    fetchPatients()
+      .then((list) => {
+        setPatients(list);
+        if (!selectedPatient && list.length === 1) {
+          setSelectedPatient(list[0].username);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const patientIds = Object.keys(patients);
+  useEffect(() => {
+    if (!selectedPatient) {
+      setScans([]);
+      return;
+    }
+    setScanLoading(true);
+    fetchScans(selectedPatient)
+      .then((data) =>
+        setScans(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
+      )
+      .catch(() => setScans([]))
+      .finally(() => setScanLoading(false));
+  }, [selectedPatient]);
+
+  const topPrediction = (scan) => {
+    const preds = scan.models?.[0]?.predictions;
+    if (!preds || preds.length === 0) return null;
+    return preds.reduce((best, p) => (p.confidence > best.confidence ? p : best), preds[0]);
+  };
 
   return (
     <section className="timeline-page container">
       <h1>Patient Timeline</h1>
 
-      {/* Patient Selector */}
-      {patientIds.length > 1 && (
-        <div className="patient-selector">
-          <label>Select Patient:</label>
-          <select
-            value={selectedPatient || ""}
-            onChange={(e) => setSelectedPatient(e.target.value)}
-          >
-            <option value="" disabled>
-              Choose a patient
-            </option>
-            {patientIds.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Timeline */}
-      {selectedPatient && patients[selectedPatient]?.length > 0 ? (
-        <div className="timeline-horizontal">
-          {patients[selectedPatient]
-            .slice()
-            .reverse()
-            .map((item, index) => (
-              <div key={index} className="timeline-card">
-                
-                {/* IMAGE */}
-                {item.image && (
-                  <div className="timeline-image-wrapper">
-                    <img
-                      src={item.image}
-                      alt="X-ray"
-                      className="timeline-image"
-                    />
-                  </div>
-                )}
-
-                {/* CONTENT */}
-                <div className="timeline-info">
-                  <div className="timeline-date">
-                    {item.date} • {item.time}
-                  </div>
-
-                  <h3 className="timeline-title">{item.result}</h3>
-
-                  {item.confidence !== null && (
-                    <p className="timeline-confidence">
-                      Confidence: {(item.confidence * 100).toFixed(1)}%
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-        </div>
-      ) : selectedPatient ? (
-        <p className="muted">No timeline data available.</p>
+      {loading ? (
+        <p className="muted">Loading…</p>
       ) : (
-        <p className="muted">Select a patient to view timeline.</p>
+        <>
+          {patients.length > 1 && (
+            <div className="patient-selector">
+              <label>Select Patient:</label>
+              <select
+                value={selectedPatient || ""}
+                onChange={(e) => setSelectedPatient(e.target.value)}
+              >
+                <option value="" disabled>
+                  Choose a patient
+                </option>
+                {patients.map((p) => (
+                  <option key={p._id} value={p.username}>
+                    {p.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {scanLoading ? (
+            <p className="muted">Loading scans…</p>
+          ) : selectedPatient && scans.length > 0 ? (
+            <div className="timeline-horizontal">
+              {scans.map((scan) => {
+                const top = topPrediction(scan);
+                return (
+                  <div key={scan._id} className="timeline-card">
+                    <div className="timeline-image-wrapper">
+                      <img
+                        src={scanImageUrl(scan._id)}
+                        alt="X-ray"
+                        className="timeline-image"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    </div>
+                    <div className="timeline-info">
+                      <div className="timeline-date">
+                        {new Date(scan.createdAt).toLocaleDateString()} •{" "}
+                        {new Date(scan.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                      <h3 className="timeline-title">
+                        {top ? top.code : "No prediction"}
+                      </h3>
+                      {top && (
+                        <p className="timeline-confidence">
+                          Confidence: {(top.confidence * 100).toFixed(1)}%
+                        </p>
+                      )}
+                      <ShareButton scanId={scan._id} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : selectedPatient ? (
+            <p className="muted">No scans available for this patient.</p>
+          ) : patients.length === 0 ? (
+            <p className="muted">No patients available.</p>
+          ) : (
+            <p className="muted">Select a patient to view timeline.</p>
+          )}
+        </>
       )}
     </section>
   );

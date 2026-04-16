@@ -1,6 +1,7 @@
-export async function classifyUploadedImage(file) {
+export async function classifyUploadedImage(file, patientId) {
   const formData = new FormData();
   formData.append("image", file);
+  if (patientId) formData.append("patientId", patientId);
 
   const response = await fetch("/api/classify", {
     method: "POST",
