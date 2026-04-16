@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const STAFF_ROLES = ["radiologist", "head_radiologist"];
@@ -7,133 +8,135 @@ function Dashboard({ user }) {
   const isStaff = STAFF_ROLES.includes(user?.role);
   const isHead = user?.role === "head_radiologist";
 
+  const leftRef = useRef(null);
+  const rightRef = useRef(null);
+  const [leftVisible, setLeftVisible] = useState(false);
+  const [rightVisible, setRightVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.target === leftRef.current) setLeftVisible(entry.isIntersecting);
+          if (entry.target === rightRef.current) setRightVisible(entry.isIntersecting);
+        });
+      },
+      { threshold: 0.25 }
+    );
+    if (leftRef.current) observer.observe(leftRef.current);
+    if (rightRef.current) observer.observe(rightRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <>
-      <header className="hero">
-        <div className="hero-grid">
-          <div className="hero-content">
-            <span className="pill">AI Medical Imaging Platform</span>
+    <div className="min-h-screen w-full bg-[#0b1220] overflow-x-hidden">
 
-            <h1>Bone Fracture Detection & Patient Tracking System</h1>
+      <section className="min-h-screen flex items-center px-6 md:px-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 w-full max-w-7xl mx-auto items-center gap-20">
 
-            <p>
-              This platform uses AI to analyze X-ray images and assist in
-              fracture detection, patient tracking, and medical data
-              visualization.
+          <div
+            ref={leftRef}
+            className={`transition-all duration-1000 ease-out ${
+              leftVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
+            }`}
+          >
+            <h1 className="text-5xl md:text-7xl font-bold leading-tight">
+              AI Fracture <br />
+              <span className="text-sky-400">Detection System</span>
+            </h1>
+
+            <p className="mt-4 text-sm text-white/50">
+              Welcome, <strong className="text-white">{user?.username}</strong>
+              <span className="ml-2 px-2 py-0.5 rounded-lg bg-sky-400/20 border border-sky-400/30 text-sky-300 text-xs capitalize">
+                {user?.role?.replace("_", " ")}
+              </span>
             </p>
 
-            {isStaff ? (
-              <button
-                className="btn btn-primary"
-                onClick={() => navigate("/upload")}
-              >
-                Start AI Analysis
-              </button>
-            ) : (
-              <button
-                className="btn btn-primary"
-                onClick={() => navigate("/timeline")}
-              >
-                View My Timeline
-              </button>
-            )}
-          </div>
-
-          <div className="hero-card">
-            <h3>Welcome, {user?.username}</h3>
-            <p className="muted" style={{ marginTop: 6 }}>
-              Role: <strong>{user?.role?.replace("_", " ")}</strong>
+            <p className="mt-6 text-lg md:text-xl text-white/70 max-w-xl leading-relaxed">
+              This platform uses artificial intelligence to analyze medical scans.
+              It runs multiple deep learning models and combines their predictions
+              to improve accuracy, while maintaining patient history for clinical tracking.
             </p>
 
-            <ul>
-              {isStaff && <li>Upload &amp; classify X-ray images</li>}
-              <li>View patient timelines &amp; analytics</li>
-              <li>Share scans with colleagues or patients</li>
-              {isHead && <li>Manage patient–radiologist assignments</li>}
-              {user?.role === "patient" && (
-                <li>View scans shared with you by your radiologist</li>
+            <div className="flex flex-wrap gap-3 mt-8">
+              {isStaff ? (
+                <button
+                  onClick={() => navigate("/upload")}
+                  className="px-7 py-3 text-lg font-semibold rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:scale-[1.04] transition-all duration-300 shadow-lg"
+                >
+                  Upload X-Ray
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate("/timeline")}
+                  className="px-7 py-3 text-lg font-semibold rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white hover:bg-white/20 hover:scale-[1.04] transition-all duration-300 shadow-lg"
+                >
+                  View My Timeline
+                </button>
               )}
-            </ul>
+              <button
+                onClick={() => navigate("/shared")}
+                className="px-7 py-3 text-lg font-semibold rounded-2xl backdrop-blur-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-all duration-300"
+              >
+                Shared Scans
+              </button>
+            </div>
+          </div>
 
-            <p className="muted" style={{ marginTop: 10 }}>
-              All analysis is for educational and assistive purposes only.
-            </p>
+          <div
+            ref={rightRef}
+            className={`transition-all duration-1000 ease-out ${
+              rightVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"
+            }`}
+          >
+            <div className="grid grid-cols-1 gap-4">
+              {isStaff && (
+                <div
+                  onClick={() => navigate("/upload")}
+                  className="cursor-pointer bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300"
+                >
+                  <h3 className="text-lg font-semibold">AI Fracture Detection</h3>
+                  <p className="text-white/60 text-sm mt-2">
+                    Upload medical images and receive AI predictions with confidence scores.
+                  </p>
+                </div>
+              )}
+              <div
+                onClick={() => navigate("/timeline")}
+                className="cursor-pointer bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300"
+              >
+                <h3 className="text-lg font-semibold">Patient Timeline</h3>
+                <p className="text-white/60 text-sm mt-2">
+                  View historical scans organized by patient with chronological events.
+                </p>
+              </div>
+              <div
+                onClick={() => navigate("/analytics")}
+                className="cursor-pointer bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300"
+              >
+                <h3 className="text-lg font-semibold">Analytics Dashboard</h3>
+                <p className="text-white/60 text-sm mt-2">
+                  Review model outputs and detection results from uploaded medical data.
+                </p>
+              </div>
+              {(isHead || user?.role === "radiologist") && (
+                <div
+                  onClick={() => navigate("/manage")}
+                  className="cursor-pointer bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300"
+                >
+                  <h3 className="text-lg font-semibold">Patient Assignments</h3>
+                  <p className="text-white/60 text-sm mt-2">
+                    {isHead
+                      ? "Assign patients to radiologists and manage access."
+                      : "View your assigned patients."}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </header>
-
-      <section className="grid">
-        {isStaff && (
-          <div className="card" onClick={() => navigate("/upload")} style={{ cursor: "pointer" }}>
-            <h3>AI Fracture Detection</h3>
-            <p>
-              Upload medical images and receive AI predictions with confidence
-              scores and classification results.
-            </p>
-          </div>
-        )}
-
-        <div className="card" onClick={() => navigate("/timeline")} style={{ cursor: "pointer" }}>
-          <h3>Patient Timeline</h3>
-          <p>
-            View historical scans organized by patient with chronological
-            medical events.
-          </p>
-        </div>
-
-        <div className="card" onClick={() => navigate("/analytics")} style={{ cursor: "pointer" }}>
-          <h3>Analytics Dashboard</h3>
-          <p>
-            Visualize detection results and review model outputs from
-            uploaded medical data.
-          </p>
-        </div>
-
-        <div className="card" onClick={() => navigate("/shared")} style={{ cursor: "pointer" }}>
-          <h3>Shared Scans</h3>
-          <p>
-            View scans shared with you and manage your outgoing shares.
-          </p>
-        </div>
-
-        {(isHead || user?.role === "radiologist") && (
-          <div className="card" onClick={() => navigate("/manage")} style={{ cursor: "pointer" }}>
-            <h3>Patient Assignments</h3>
-            <p>
-              {isHead
-                ? "Assign patients to radiologists and manage access permissions."
-                : "View your assigned patients."}
-            </p>
-          </div>
-        )}
       </section>
-
-      {isStaff && (
-        <section className="ai-section">
-          <div className="ai-header">
-            <h2>Ready to Analyze a Scan?</h2>
-            <p>
-              Upload an X-ray or medical image to begin AI-assisted fracture detection.
-            </p>
-          </div>
-
-          <div className="ai-card" style={{ textAlign: "center" }}>
-            <h3>AI Upload Tool</h3>
-
-            <p className="muted">
-              Supports X-ray, MRI, CT scan images for analysis.
-            </p>
-
-            <button
-              className="btn btn-primary"
-              onClick={() => navigate("/upload")}
-            >
-              Go to Upload Tool
-            </button>
-          </div>
-        </section>
-      )}
-    </>
+    </div>
   );
 }
 

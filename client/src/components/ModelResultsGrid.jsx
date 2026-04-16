@@ -1,47 +1,75 @@
 function ModelResultCard({ title, filename, predictions, num_labels }) {
   return (
-    <div className="model-result-card">
-      <h4 className="model-result-title">{title}</h4>
+    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur hover:bg-white/10 transition">
+
+      {/* TITLE */}
+      <h4 className="text-lg font-semibold text-white mb-4">
+        {title}
+      </h4>
+
+      {/* FILE */}
       {filename && (
-        <div className="result-row">
+        <div className="flex justify-between text-sm text-white/60 mb-2">
           <span>File</span>
-          <strong className="model-result-filename">{filename}</strong>
+          <strong className="text-white truncate max-w-[60%]">
+            {filename}
+          </strong>
         </div>
       )}
-      <div className="result-row">
+
+      {/* LABEL COUNT */}
+      <div className="flex justify-between text-sm text-white/60 mb-4">
         <span>Labels</span>
-        <strong>{num_labels ?? 0}</strong>
+        <strong className="text-white">{num_labels ?? 0}</strong>
       </div>
+
+      {/* PREDICTIONS */}
       {predictions?.length ? (
-        predictions.map((pred, i) => (
-          <div key={i} className="model-pred-block">
-            <div className="result-row">
-              <span>AO code</span>
-              <strong>{pred.code}</strong>
+        <div className="space-y-4">
+          {predictions.map((pred, i) => (
+            <div
+              key={i}
+              className="p-3 rounded-xl bg-black/20 border border-white/10"
+            >
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-white/60">AO code</span>
+                <strong className="text-white">{pred.code}</strong>
+              </div>
+
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-white/60">Confidence</span>
+                <strong className="text-white">
+                  {(pred.confidence * 100).toFixed(1)}%
+                </strong>
+              </div>
+
+              {/* CONFIDENCE BAR */}
+              <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-sky-400 rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(100, pred.confidence * 100)}%`,
+                  }}
+                />
+              </div>
             </div>
-            <div className="result-row">
-              <span>Confidence</span>
-              <strong>{(pred.confidence * 100).toFixed(1)}%</strong>
-            </div>
-            <div className="confidence-bar">
-              <div
-                className="confidence-fill"
-                style={{ width: `${Math.min(100, pred.confidence * 100)}%` }}
-              />
-            </div>
-          </div>
-        ))
+          ))}
+        </div>
       ) : (
-        <p className="muted model-result-empty">No classifications</p>
+        <p className="text-white/40 text-sm italic">
+          No classifications
+        </p>
       )}
     </div>
   );
 }
 
+/* GRID WRAPPER */
 export default function ModelResultsGrid({ models }) {
   if (!models?.length) return null;
+
   return (
-    <div className="model-results-grid">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {models.map((m) => (
         <ModelResultCard
           key={m.key}

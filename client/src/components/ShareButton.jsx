@@ -8,7 +8,7 @@ function ShareButton({ scanId }) {
     <>
       <button
         type="button"
-        className="btn btn-share"
+        className="px-3 py-1 text-xs rounded-lg bg-sky-500/20 border border-sky-500/30 text-sky-300 hover:bg-sky-500/30 transition"
         onClick={() => setOpen(true)}
       >
         Share
