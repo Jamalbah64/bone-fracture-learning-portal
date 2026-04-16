@@ -13,13 +13,23 @@ router.get("/", async (req, res) => {
             const me = await Users.findById(userId).select("username role").lean();
             if (!me) return res.json([]);
             const scanCount = await Scan.countDocuments({ patientUser: userId });
+            if (scanCount === 0) return res.json([]);
             return res.json([
                 { _id: me._id, username: me.username, role: me.role, scanCount },
             ]);
         }
 
         if (role === "head_radiologist") {
-            const patients = await Users.find({ role: "patient" })
+            const patientIdsWithScans = await Scan.distinct("patientUser", {
+                patientUser: { $ne: null },
+            });
+
+            if (patientIdsWithScans.length === 0) return res.json([]);
+
+            const patients = await Users.find({
+                _id: { $in: patientIdsWithScans },
+                role: "patient",
+            })
                 .select("username role")
                 .lean();
 
@@ -75,10 +85,12 @@ router.get("/", async (req, res) => {
             );
 
             return res.json(
-                patients.map((p) => ({
-                    ...p,
-                    scanCount: countMap[p._id.toString()] || 0,
-                }))
+                patients
+                    .map((p) => ({
+                        ...p,
+                        scanCount: countMap[p._id.toString()] || 0,
+                    }))
+                    .filter((p) => p.scanCount > 0)
             );
         }
 

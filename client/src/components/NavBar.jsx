@@ -1,16 +1,21 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import "./NavBar.css";
 
 const STAFF_ROLES = ["radiologist", "head_radiologist"];
 
 function NavBar({ user }) {
   const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const role = user?.role;
   const isStaff = STAFF_ROLES.includes(role);
   const isHead = role === "head_radiologist";
+
+  const isActive = (path) =>
+    path === "/"
+      ? location.pathname === "/"
+      : location.pathname.startsWith(path);
 
   async function handleLogout() {
     try {
@@ -21,136 +26,138 @@ function NavBar({ user }) {
     } catch {
       // ignore
     }
-
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     document.cookie = "remember=; max-age=0; path=/";
-
-    try {
-      window.dispatchEvent(new Event("auth-change"));
-    } catch {
-      // ignore
-    }
-
+    window.dispatchEvent(new Event("auth-change"));
     navigate("/login");
   }
 
-  const isActive = (path) => {
-    if (path === "/") return location.pathname === "/";
-    return location.pathname.startsWith(path);
-  };
+  const linkClass = (active) =>
+    `px-4 py-2 rounded-xl transition-all duration-200 text-sm font-medium ${
+      active
+        ? "bg-white/10 text-white shadow-md"
+        : "text-white/70 hover:text-white hover:bg-white/5"
+    }`;
+
+  const closeMenu = () => setMenuOpen(false);
 
   return (
-    <nav className="nav">
-      <div className="nav-inner container">
-        <Link to="/" className="brand" onClick={() => setMenuOpen(false)}>
-          <div className="brand-mark">🦴</div>
-          <div className="brand-text">
-            <div className="brand-name">FractureDetection</div>
-            <div className="brand-sub">AI Fracture Detection + Learning</div>
-          </div>
-        </Link>
+    <nav className="sticky top-0 z-50 w-full">
+      <div className="backdrop-blur-xl bg-black/60 border-b border-white/10">
+        <div className="h-16 flex items-center justify-between px-6">
 
-        <ul className={`nav-links ${menuOpen ? "open" : ""}`}>
-          <li>
-            <Link
-              to="/"
-              className={isActive("/") ? "nav-link active" : "nav-link"}
-              onClick={() => setMenuOpen(false)}
-            >
+          <Link
+            to="/"
+            className="flex items-center gap-3 font-bold text-white"
+            onClick={closeMenu}
+          >
+            <div className="leading-tight">
+              <div className="text-lg">FractureDetection</div>
+              <div className="text-xs text-white/50">Medical AI Platform</div>
+            </div>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-2">
+            <Link to="/" className={linkClass(isActive("/"))}>
               Dashboard
             </Link>
-          </li>
 
-          {isStaff && (
-            <li>
-              <Link
-                to="/upload"
-                className={isActive("/upload") ? "nav-link active" : "nav-link"}
-                onClick={() => setMenuOpen(false)}
-              >
+            {isStaff && (
+              <Link to="/upload" className={linkClass(isActive("/upload"))}>
                 AI Tool
               </Link>
-            </li>
-          )}
+            )}
 
-          <li>
-            <Link
-              to="/analytics"
-              className={isActive("/analytics") ? "nav-link active" : "nav-link"}
-              onClick={() => setMenuOpen(false)}
-            >
+            <Link to="/analytics" className={linkClass(isActive("/analytics"))}>
               Analytics
             </Link>
-          </li>
 
-          <li>
             <Link
               to="/timeline"
-              className={
+              className={linkClass(
                 isActive("/timeline") || isActive("/patients")
-                  ? "nav-link active"
-                  : "nav-link"
-              }
-              onClick={() => setMenuOpen(false)}
+              )}
             >
               Timeline
             </Link>
-          </li>
 
-          <li>
-            <Link
-              to="/shared"
-              className={isActive("/shared") ? "nav-link active" : "nav-link"}
-              onClick={() => setMenuOpen(false)}
-            >
+            <Link to="/shared" className={linkClass(isActive("/shared"))}>
               Shared
             </Link>
-          </li>
 
-          {(isHead || role === "radiologist") && (
-            <li>
-              <Link
-                to="/manage"
-                className={isActive("/manage") ? "nav-link active" : "nav-link"}
-                onClick={() => setMenuOpen(false)}
-              >
+            {(isHead || role === "radiologist") && (
+              <Link to="/manage" className={linkClass(isActive("/manage"))}>
                 {isHead ? "Manage" : "Patients"}
               </Link>
-            </li>
-          )}
+            )}
 
-          <li>
-            <Link
-              to="/settings"
-              className={isActive("/settings") ? "nav-link active" : "nav-link"}
-              onClick={() => setMenuOpen(false)}
-            >
+            <Link to="/settings" className={linkClass(isActive("/settings"))}>
               Settings
             </Link>
-          </li>
+          </div>
 
-          <li className="mobile-login">
-            <button className="nav-login" onClick={handleLogout}>
+          <div className="hidden md:flex items-center gap-4">
+            {user && (
+              <div className="text-white/60 text-sm">
+                {user.username}
+                <span className="ml-2 text-xs px-2 py-0.5 rounded-lg bg-sky-400/20 border border-sky-400/30 text-sky-300 capitalize">
+                  {role?.replace("_", " ")}
+                </span>
+              </div>
+            )}
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-xl bg-red-500/20 text-red-300 hover:bg-red-500/30 transition"
+            >
               Logout
             </button>
-          </li>
-        </ul>
+          </div>
 
-        <div className="nav-right">
-          {user && (
-            <div className="nav-user">
-              {user.username}{" "}
-              <span className="nav-role-badge">{role?.replace("_", " ")}</span>
-            </div>
-          )}
-          <button className="nav-login desktop-only" onClick={handleLogout}>
-            Logout
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="md:hidden text-white text-2xl"
+          >
+            {menuOpen ? "✕" : "☰"}
           </button>
         </div>
 
-        <div className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
-          ☰
+        <div
+          className={`md:hidden px-6 pb-4 flex flex-col gap-2 border-t border-white/10 transition-all ${
+            menuOpen ? "block" : "hidden"
+          }`}
+        >
+          <Link onClick={closeMenu} to="/" className="py-2 text-white/80">
+            Dashboard
+          </Link>
+          {isStaff && (
+            <Link onClick={closeMenu} to="/upload" className="py-2 text-white/80">
+              AI Tool
+            </Link>
+          )}
+          <Link onClick={closeMenu} to="/analytics" className="py-2 text-white/80">
+            Analytics
+          </Link>
+          <Link onClick={closeMenu} to="/timeline" className="py-2 text-white/80">
+            Timeline
+          </Link>
+          <Link onClick={closeMenu} to="/shared" className="py-2 text-white/80">
+            Shared
+          </Link>
+          {(isHead || role === "radiologist") && (
+            <Link onClick={closeMenu} to="/manage" className="py-2 text-white/80">
+              {isHead ? "Manage" : "Patients"}
+            </Link>
+          )}
+          <Link onClick={closeMenu} to="/settings" className="py-2 text-white/80">
+            Settings
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="mt-3 px-4 py-2 rounded-xl bg-red-500/20 text-red-300"
+          >
+            Logout
+          </button>
         </div>
       </div>
     </nav>
