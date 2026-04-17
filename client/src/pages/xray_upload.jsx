@@ -2,14 +2,9 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { classifyUploadedImage } from "../api/classification";
 import ModelResultsGrid from "../components/ModelResultsGrid";
+import { appendScanRecord, fileToDataUrl } from "../utils/analyticsStore";
+import { validateMedicalImage } from "../utils/medicalImageValidation";
 import { splitApiResultIntoModels } from "../utils/scanModels";
-
-const ALLOWED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dcm", ".dicom"];
-
-function getExtension(name = "") {
-  const index = name.lastIndexOf(".");
-  return index >= 0 ? name.slice(index).toLowerCase() : "";
-}
 
 function XrayUpload() {
   const location = useLocation();
@@ -41,18 +36,12 @@ function XrayUpload() {
     return () => URL.revokeObjectURL(url);
   }, [selectedFile]);
 
-  const validateFile = (file) => {
-    if (!file) return "No file selected.";
-    const ext = getExtension(file.name);
-    if (!ALLOWED_EXTENSIONS.includes(ext)) return "Unsupported file format.";
-    return "";
-  };
-
   const handleAcceptedFile = (file) => {
-    const msg = validateFile(file);
-    if (msg) {
-      setError(msg);
+    const validation = validateMedicalImage(file);
+
+    if (!validation.valid) {
       setSelectedFile(null);
+      setError(validation.reason);
       setMessage("");
       return;
     }
@@ -71,7 +60,17 @@ function XrayUpload() {
   };
 
   const handleRun = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      setError("Please drag and drop a medical image.");
+      return;
+    }
+
+    const validation = validateMedicalImage(selectedFile);
+    if (!validation.valid) {
+      setError(validation.reason);
+      return;
+    }
+
     setIsLoading(true);
     setError("");
     setModels(null);

@@ -58,17 +58,12 @@ function getTokenExpiryDate(hours = 2) {
     return expiresAt;
 }
 
-const ROLE_ALIASES = {
-    clinician: "radiologist",
-    admin: "head_radiologist",
-};
-
-const ALLOWED_ROLES = ["patient", "radiologist", "head_radiologist"];
+const ALLOWED_ROLES = ["patient", "clinician", "radiologist", "head_radiologist"];
 const STAFF_ROLES = ["radiologist", "head_radiologist"];
 
 function normalizeRole(role) {
     if (!role) return "patient";
-    return ROLE_ALIASES[role] || role;
+    return role;
 }
 
 function normalizeStaffId(staffId) {

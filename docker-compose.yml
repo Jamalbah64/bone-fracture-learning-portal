@@ -23,7 +23,7 @@ services:
 
   client:
     build:
-      context: ./client/react-app
+      context: ./client
     container_name: FrACT-ui
     restart: always
     ports:

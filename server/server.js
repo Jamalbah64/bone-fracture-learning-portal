@@ -24,14 +24,25 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(express.json({ limit: "25mb" }));
+
+// Skip JSON/text/raw parsing for file upload endpoints
+app.use((req, res, next) => {
+    if (req.path === "/api/classify/upload" && req.method === "POST") {
+        return next();
+    }
+    next();
+});
+
+app.use(express.json({ limit: "50mb" }));
+app.use(express.text({ limit: "50mb" }));
+app.use(express.raw({ limit: "50mb" }));
 
 app.use("/api/auth", authRoutes);
 
 app.use(
-    "/api/classify",
+    "/api/classify/upload",
     authMiddleware,
-    requireRole("radiologist", "head_radiologist"),
+    requireRole("radiologist", "head_radiologist", "clinician"),
     classificationRoute
 );
 
