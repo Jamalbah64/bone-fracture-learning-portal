@@ -197,7 +197,7 @@ function Dashboard({ user }) {
                 </p>
 
                 <ul className="mt-6 space-y-4 text-white/70">
-                  <li>• Enter a <strong>Patient ID</strong> to track history</li>
+                  <li>• Enter a <strong>Patient Username</strong> to track history</li>
                   <li>• Upload an X-ray</li>
                   <li>• Click <strong>Run Analysis</strong></li>
                   <li>• View AI predictions and confidence levels</li>

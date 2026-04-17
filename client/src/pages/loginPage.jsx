@@ -9,6 +9,7 @@ function Login() {
   const [staffId, setStaffId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // 👈 NEW
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,7 +33,6 @@ function Login() {
       }
 
       window.dispatchEvent(new Event("auth-change"));
-
       navigate("/");
     } catch {
       setError("Unexpected error occurred");
@@ -60,6 +60,7 @@ function Login() {
         {/* FORM */}
         <form onSubmit={handleSubmit} className="space-y-5">
 
+          {/* USERNAME */}
           <input
             type="text"
             placeholder="Username"
@@ -69,15 +70,28 @@ function Login() {
             required
           />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-sky-400"
-            required
-          />
+          {/* PASSWORD WITH TOGGLE */}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"} // 👈 TOGGLE
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 pr-12 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-sky-400"
+              required
+            />
 
+            {/* TOGGLE BUTTON */}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition text-sm"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {/* STAFF ID */}
           <input
             type="text"
             placeholder="Staff ID (optional)"
@@ -88,12 +102,14 @@ function Login() {
             className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-sky-400"
           />
 
+          {/* ERROR */}
           {error && (
             <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/30 p-3 rounded-xl">
               {error}
             </div>
           )}
 
+          {/* BUTTON */}
           <button
             type="submit"
             disabled={loading}
