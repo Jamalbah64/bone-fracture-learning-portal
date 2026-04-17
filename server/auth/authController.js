@@ -2,11 +2,55 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import User from "../models/index.js";
+import Scan from "../models/Scan.js";
+import PatientAssignment from "../models/PatientAssignment.js";
 import { AUTH_COOKIE_NAME, getCookieOptions } from "./cookies.js";
 import {
     createSession,
     revokeSessionByJti,
 } from "./sessionService.js";
+
+// When a new patient registers, claim any scans that were previously uploaded
+// for their username (before they had an account) by linking patientUser to
+// the new account and auto-creating assignments for the uploading radiologists.
+async function linkOrphanScans(newUser) {
+    if (!newUser || newUser.role !== "patient" || !newUser._id) return;
+    try {
+        const orphanScans = await Scan.find({
+            patientId: newUser.username,
+            patientUser: null,
+        })
+            .select("_id uploadedBy")
+            .lean();
+        if (orphanScans.length === 0) return;
+
+        await Scan.updateMany(
+            { _id: { $in: orphanScans.map((s) => s._id) } },
+            { $set: { patientUser: newUser._id } }
+        );
+
+        const uploaderIds = [
+            ...new Set(orphanScans.map((s) => String(s.uploadedBy))),
+        ];
+        await Promise.all(
+            uploaderIds.map(async (radId) => {
+                const exists = await PatientAssignment.findOne({
+                    patientUser: newUser._id,
+                    radiologist: radId,
+                });
+                if (!exists) {
+                    await PatientAssignment.create({
+                        patientUser: newUser._id,
+                        radiologist: radId,
+                        assignedBy: radId,
+                    });
+                }
+            })
+        );
+    } catch (err) {
+        console.error("linkOrphanScans error:", err);
+    }
+}
 
 function getTokenExpiryDate(hours = 2) {
     const expiresAt = new Date();
@@ -52,12 +96,13 @@ export async function register(req, res) {
             return res.status(400).json({ error: "Username already in use" });
         }
 
-        await User.create({
+        const createdUser = await User.create({
             username,
             password,
             role: normalizedRole,
             staffId: STAFF_ROLES.includes(normalizedRole) ? normalizedStaffId : undefined
         });
+        await linkOrphanScans(createdUser);
         return res.status(201).json({ message: "User created" });
     } catch (err) {
         console.error("Registration error:", err && err.stack ? err.stack : err);
