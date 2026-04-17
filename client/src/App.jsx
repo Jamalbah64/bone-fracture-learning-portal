@@ -6,7 +6,7 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
-import "./App.css";
+
 import NavBar from "./components/NavBar";
 import Analytics from "./pages/analytics";
 import PatientAnalyticsDetail from "./pages/patient_analytics_detail";
@@ -48,10 +48,8 @@ function App() {
     function onAuthChange() {
       fetchMe();
     }
-
     window.addEventListener("auth-change", onAuthChange);
     fetchMe();
-
     return () => {
       window.removeEventListener("auth-change", onAuthChange);
     };
@@ -63,13 +61,11 @@ function App() {
         method: "GET",
         credentials: "include",
       });
-
       if (!res.ok) {
         setUser(null);
         setAuthChecked(true);
         return;
       }
-
       const data = await res.json();
       setUser(data);
       setAuthChecked(true);
@@ -81,15 +77,19 @@ function App() {
   }
 
   if (!authChecked) {
-    return <div className="container">Checking authentication...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0b1220] text-white">
+        Checking authentication...
+      </div>
+    );
   }
 
   return (
     <BrowserRouter>
       {user && <NavBar user={user} />}
 
-      <main className="content">
-        <div className="container">
+      <div className="min-h-screen flex flex-col bg-[#0b1220] text-white">
+        <main className="flex-1 w-full">
           <Routes>
             <Route
               path="/"
@@ -171,16 +171,14 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </div>
-      </main>
+        </main>
 
-      {user && (
-        <footer className="footer">
-          <div className="container">
-            <p>© {new Date().getFullYear()} Bone Fracture Learning Portal</p>
-          </div>
-        </footer>
-      )}
+        {user && (
+          <footer className="border-t border-white/10 py-6 text-center text-white/50 text-sm">
+            © {new Date().getFullYear()} Bone Fracture Learning Portal
+          </footer>
+        )}
+      </div>
     </BrowserRouter>
   );
 }

@@ -2,14 +2,17 @@ import express from "express";
 import mongoose from "mongoose";
 import Scan from "../models/Scan.js";
 import SharedItem from "../models/SharedItem.js";
+import Users from "../models/Users.js";
 import loadAccess from "../auth/middleware/accessControl.js";
 
 const router = express.Router();
 
-function canSee(scan, userId, role, accessiblePatients) {
+function canSee(scan, userId, role, accessiblePatients, username) {
     if (role === "head_radiologist") return true;
     if (role === "patient") {
-        return scan.patientUser && scan.patientUser.toString() === userId;
+        if (scan.patientUser && scan.patientUser.toString() === userId) return true;
+        if (!scan.patientUser && username && scan.patientId === username) return true;
+        return false;
     }
     if (role === "radiologist") {
         if (scan.uploadedBy.toString() === userId) return true;
@@ -34,7 +37,13 @@ router.get("/", loadAccess, async (req, res) => {
         if (patientId) filter.patientId = patientId;
 
         if (role === "patient") {
-            filter.patientUser = userId;
+            const me = await Users.findById(userId).select("username").lean();
+            filter.$or = [
+                { patientUser: userId },
+                ...(me?.username
+                    ? [{ patientUser: null, patientId: me.username }]
+                    : []),
+            ];
         } else if (role === "radiologist") {
             const accessible = req.accessiblePatients || [];
             const sharedScans = await SharedItem.find({
@@ -68,6 +77,12 @@ router.get("/", loadAccess, async (req, res) => {
     }
 });
 
+async function getUsernameForPatient(role, userId) {
+    if (role !== "patient") return null;
+    const me = await Users.findById(userId).select("username").lean();
+    return me?.username || null;
+}
+
 router.get("/:id", loadAccess, async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -90,9 +105,10 @@ router.get("/:id", loadAccess, async (req, res) => {
                 sharedWith: userId,
             }).lean();
 
+            const username = await getUsernameForPatient(role, userId);
             if (
                 !shared &&
-                !canSee(scan, userId, role, req.accessiblePatients)
+                !canSee(scan, userId, role, req.accessiblePatients, username)
             ) {
                 return res.status(403).json({ error: "Forbidden" });
             }
@@ -121,9 +137,10 @@ router.get("/:id/image", loadAccess, async (req, res) => {
                 resourceId: scan._id,
                 sharedWith: userId,
             }).lean();
+            const username = await getUsernameForPatient(role, userId);
             if (
                 !shared &&
-                !canSee(scan, userId, role, req.accessiblePatients)
+                !canSee(scan, userId, role, req.accessiblePatients, username)
             ) {
                 return res.status(403).json({ error: "Forbidden" });
             }
