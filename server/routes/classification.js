@@ -1,10 +1,13 @@
 import "dotenv/config";
 import express from "express";
+<<<<<<< HEAD
 import fs from "fs";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import { validateMedicalImage } from "../utils/medicalImageValidator.js";
+=======
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 
 const router = express.Router();
 const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";

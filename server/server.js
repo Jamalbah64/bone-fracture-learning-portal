@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 import cookieParser from "cookie-parser";
+=======
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 import cors from "cors";
 import "dotenv/config";
 import express from "express";
@@ -16,6 +19,7 @@ import sharesRoute from "./routes/shares.js";
 const app = express();
 const PORT = Number(process.env.PORT ?? 4000);
 
+<<<<<<< HEAD
 app.use(
     cors({
         origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
@@ -56,6 +60,25 @@ app.use(
 );
 app.use("/api/shares", authMiddleware, sharesRoute);
 
+=======
+console.log(process.env.MONGO_URI); // Debug log to verify MONGO_URI is loaded
+
+app.use(cors());
+app.use(express.json({ limit: "25mb" }));
+
+// Public auth routes
+app.use("/api/auth", authRoutes);
+
+// Role-protected classify route
+app.use(
+    "/api/classify",
+    authMiddleware,
+    requireRole("clinician", "admin"),
+    classificationRoute
+);
+
+// Patient-access route
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 app.get(
     "/api/patient-portal",
     authMiddleware,
@@ -65,6 +88,10 @@ app.get(
     }
 );
 
+<<<<<<< HEAD
+=======
+// Clinician route
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 app.get(
     "/api/clinician",
     authMiddleware,
@@ -74,6 +101,10 @@ app.get(
     }
 );
 
+<<<<<<< HEAD
+=======
+// admin route
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 app.get(
     "/api/admin",
     authMiddleware,
