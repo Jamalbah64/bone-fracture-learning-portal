@@ -1,21 +1,31 @@
 import os
 import shutil
-import tempfile
+import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Dict, Any
 
-import cv2
-import numpy as np
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from ultralytics import YOLO
+from fastapi.staticfiles import StaticFiles
+
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
+YOLO = None
+
+logger = logging.getLogger("mock_api")
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 
 UPLOAD_DIR = Path("./temp_uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/temp_uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="temp_uploads")
 
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dcm", ".dicom"}
+
 ALLOWED_CONTENT_TYPES = {
     "image/png",
     "image/jpeg",
@@ -29,16 +39,16 @@ ALLOWED_CONTENT_TYPES = {
     "application/octet-stream",
 }
 
-# MODEL CONFIGURATION
+BASE_DIR = Path(__file__).parent
+DATA_DIR = BASE_DIR / "data"
 
-# UPDATE THESE PATHS TO YOUR ACTUAL MODEL WEIGHTS
-MODEL_PATHS = {
-    "model_u": "/content/drive/MyDrive/FracDetectYolo/FCE-YOLOv8/runs/model_u_augmented/weights/best.pt",
-    "model_a": "/content/drive/MyDrive/FracDetectYolo/FCE-YOLOv8/runs/model_a_aug/weights/best.pt",
-    "model_b": "/content/drive/MyDrive/FracDetectYolo/FCE-YOLOv8/runs/model_b_aug/weights/best.pt",
+MODEL_DIRS = {
+    "model_u": DATA_DIR / "Model_U",
+    "model_a": DATA_DIR / "Model_A",
+    "model_b": DATA_DIR / "Model_B",
+    "model_fce": DATA_DIR / "FCE_Model",
 }
 
-# Fracture class mappings (from your notebook)
 FRACTURE_CLASSES = {
     0: "23r-M/2.1",
     1: "23r-M/3.1",
@@ -50,26 +60,63 @@ FRACTURE_CLASSES = {
     7: "22-D/2.1",
 }
 
-# LOAD MODELS AT STARTUP
-
-LOADED_MODELS = {}
+LOADED_MODELS: Dict[str, Any] = {}
 
 
-def load_models():
-    """Load YOLO models at startup."""
-    for model_name, model_path in MODEL_PATHS.items():
+def _find_weight_file(model_dir: Path) -> Optional[str]:
+    if not model_dir.exists():
+        return None
+
+    for candidate in ("best.pt", "last.pt"):
+        weight_path = model_dir / candidate
+        if weight_path.exists():
+            return str(weight_path.resolve())
+
+    return None
+
+
+def _load_model(weight_path: str, model_name: str) -> None:
+    global YOLO
+
+    if YOLO is None:
+        from ultralytics import YOLO as UltralyticsYOLO
+
+        YOLO = UltralyticsYOLO
+
+    model = YOLO(weight_path)
+    LOADED_MODELS[model_name] = model
+    logger.info("%s loaded from %s", model_name, weight_path)
+
+
+def load_models() -> None:
+    for model_name, model_dir in MODEL_DIRS.items():
         try:
-            if os.path.exists(model_path):
-                print(f"Loading {model_name} from {model_path}...")
-                LOADED_MODELS[model_name] = YOLO(model_path)
-                print(f"{model_name} loaded successfully")
-            else:
-                print(f" {model_name} not found at {model_path}")
+            if model_dir.exists() and any(p.is_dir() for p in model_dir.iterdir()):
+                for sub_dir in sorted([p for p in model_dir.iterdir() if p.is_dir()]):
+                    sub_model_name = f"{model_name}_{sub_dir.name.lower()}"
+                    weight_path = _find_weight_file(sub_dir)
+
+                    if not weight_path:
+                        logger.info(
+                            "No weight file found for %s in %s", sub_model_name, sub_dir
+                        )
+                        continue
+
+                    _load_model(weight_path, sub_model_name)
+                continue
+
+            weight_path = _find_weight_file(model_dir)
+
+            if not weight_path:
+                logger.info("No weight file found for %s in %s", model_name, model_dir)
+                continue
+
+            _load_model(weight_path, model_name)
+
         except Exception as e:
-            print(f"✗ Failed to load {model_name}: {e}")
+            logger.warning("Failed to load %s: %s", model_name, e)
 
 
-# Load models on startup
 load_models()
 
 app.add_middleware(
@@ -80,100 +127,75 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve temporary uploaded/annotated images
-from fastapi.staticfiles import StaticFiles
-
-app.mount("/temp_uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="temp_uploads")
-
-# HELPER FUNCTIONS
-
-
-def read_image(file_path: str) -> np.ndarray:
-    """Read image from file path."""
-    image = cv2.imread(file_path)
-    if image is None:
-        raise ValueError(f"Could not read image: {file_path}")
-    return image
-
 
 def extract_predictions_from_yolo(
-    results, model_name: str, confidence_threshold: float = 0.25
-) -> List[dict]:
-    """
-    Extract predictions from YOLO results.
-    """
-    predictions = []
+    results: Any, model_name: str, confidence_threshold: float = 0.25
+) -> List[Dict[str, Any]]:
+    predictions: List[Dict[str, Any]] = []
 
-    if not results or len(results) == 0:
+    if not results:
         return predictions
 
-    result = results[0]  # First (only) image
+    result = results[0]
+    boxes = getattr(result, "boxes", None)
 
-    if result.boxes is None or len(result.boxes) == 0:
-        return predictions  # No detections
+    if not boxes:
+        return predictions
 
-    # Extract detections
-    for i in range(len(result.boxes)):
-        conf = float(result.boxes.conf[i])
+    for i in range(len(boxes)):
+        try:
+            conf = float(boxes.conf[i])
 
-        # Skip the low confidence detections
-        if conf < confidence_threshold:
+            if conf < confidence_threshold:
+                continue
+
+            class_id = int(boxes.cls[i])
+            ao_code = FRACTURE_CLASSES.get(class_id, f"UNKNOWN_{class_id}")
+
+            x1, y1, x2, y2 = boxes.xyxyn[i]
+
+            bbox_center = [
+                float((x1 + x2) / 2.0),
+                float((y1 + y2) / 2.0),
+                float(x2 - x1),
+                float(y2 - y1),
+            ]
+
+            predictions.append(
+                {
+                    "code": ao_code,
+                    "confidence": round(conf, 4),
+                    "bbox": bbox_center,
+                    "model": model_name,
+                }
+            )
+        except Exception:
             continue
-
-        class_id = int(result.boxes.cls[i])
-        ao_code = FRACTURE_CLASSES.get(class_id, f"UNKNOWN_{class_id}")
-
-        # Get bounding box (normalized coordinates: x1, y1, x2, y2)
-        bbox_xyxy = result.boxes.xyxyn[i]  # normalized [0-1]
-        x1, y1, x2, y2 = bbox_xyxy
-
-        # Convert to center-based format
-        bbox_center = [
-            float((x1 + x2) / 2),
-            float((y1 + y2) / 2),
-            float(x2 - x1),
-            float(y2 - y1),
-        ]
-
-        predictions.append(
-            {
-                "code": ao_code,
-                "confidence": round(float(conf), 4),
-                "bbox": bbox_center,
-                "model": model_name,
-            }
-        )
 
     return predictions
 
 
-def run_inference(image_path: str, model_name: str = "model_u") -> List[dict]:
-
+def run_inference(image_path: str, model_name: str = "model_u") -> List[Dict[str, Any]]:
     if model_name not in LOADED_MODELS:
         raise ValueError(f"Model '{model_name}' not loaded")
 
     model = LOADED_MODELS[model_name]
 
-    # Run inference with confidence threshold
-    results = model.predict(
-        source=image_path,
-        conf=0.25,  # Confidence threshold
-        iou=0.45,  # IOU threshold for NMS
-        imgsz=640,  # Image size
-        verbose=False,
-    )
-
-    # Extract predictions
-    predictions = extract_predictions_from_yolo(results, model_name)
-
-    return predictions
-
-
-# API ENDPOINTS
+    try:
+        results = model.predict(
+            source=image_path,
+            conf=0.25,
+            iou=0.45,
+            imgsz=640,
+            verbose=False,
+        )
+        return extract_predictions_from_yolo(results, model_name)
+    except Exception as e:
+        raise RuntimeError(f"Inference failed for model '{model_name}'") from e
 
 
 @app.get("/")
-def root():
+def root() -> Dict[str, Any]:
     return {
         "message": "FrACT API is running!",
         "models_loaded": list(LOADED_MODELS.keys()),
@@ -181,7 +203,7 @@ def root():
 
 
 @app.get("/health")
-def health():
+def health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "models_loaded": list(LOADED_MODELS.keys()),
@@ -190,17 +212,10 @@ def health():
 
 
 @app.post("/predict-upload")
-async def predict_upload(image: UploadFile = File(...), model: str | None = None):
-    """
-    Predict fracture classification from an uploaded medical image.
-    """
-    filename = image.filename or "uploaded_image"
-    filename = Path(filename).name
+async def predict_upload(image: UploadFile = File(...), model: Optional[str] = None):
+    filename = Path(image.filename or "uploaded_image").name
     suffix = Path(filename).suffix.lower()
 
-    print(f"[PREDICT] Received: {filename}")
-
-    # Validate file type
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
@@ -214,27 +229,17 @@ async def predict_upload(image: UploadFile = File(...), model: str | None = None
             detail="Unsupported file type. Please upload JPG, PNG, TIFF, or DICOM images.",
         )
 
-    # Save uploaded file temporarily
     save_path = UPLOAD_DIR / filename
 
     try:
         with save_path.open("wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
 
-        print(f"[PREDICT] Saved to: {save_path}")
-
-        # Check if models are loaded
         if not LOADED_MODELS:
-            raise HTTPException(
-                status_code=503,
-                detail="No models loaded. Check server logs.",
-            )
+            raise HTTPException(status_code=503, detail="No models loaded.")
 
-        # Run inference with the requested model if provided, otherwise use the unified model
         model_name = model or "model_u"
         predictions = run_inference(str(save_path), model_name=model_name)
-
-        print(f"[PREDICT] Found {len(predictions)} predictions")
 
         return {
             "filename": filename,
@@ -244,28 +249,34 @@ async def predict_upload(image: UploadFile = File(...), model: str | None = None
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"[ERROR] Inference failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
+        logger.exception("Inference failed for %s: %s", filename, e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
-        if save_path.exists():
-            os.remove(save_path)
+        try:
+            if save_path.exists():
+                save_path.unlink()
+        except Exception:
+            pass
 
 
 @app.post("/predict-with-visualization")
 async def predict_with_visualization(
-    image: UploadFile = File(...), model: str | None = None
+    image: UploadFile = File(...), model: Optional[str] = None
 ):
-    """
-    Predict and return image with detection boxes drawn.
-    """
-    filename = image.filename or "uploaded_image"
-    filename = Path(filename).name
+    filename = Path(image.filename or "uploaded_image").name
     suffix = Path(filename).suffix.lower()
 
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Invalid image type")
+
+    if cv2 is None:
+        raise HTTPException(
+            status_code=500, detail="OpenCV is required for visualization"
+        )
 
     save_path = UPLOAD_DIR / filename
 
@@ -274,28 +285,26 @@ async def predict_with_visualization(
             shutil.copyfileobj(image.file, buffer)
 
         if not LOADED_MODELS:
-            raise HTTPException(status_code=503, detail="No models loaded")
+            raise HTTPException(status_code=503, detail="No models loaded.")
 
-        # Run inference with the requested model if provided
         model_name = model or "model_u"
+
         if model_name not in LOADED_MODELS:
             raise HTTPException(
                 status_code=400, detail=f"Model '{model_name}' not available"
             )
 
         model = LOADED_MODELS[model_name]
-        results = model.predict(str(save_path), conf=0.25, iou=0.45)
+        results = model.predict(
+            str(save_path), conf=0.25, iou=0.45, imgsz=640, verbose=False
+        )
+        annotated = results[0].plot()
 
-        # Draw boxes on image
-        annotated_image = results[0].plot()
-
-        # Save annotated image
         output_name = f"annotated_{filename}"
         output_path = UPLOAD_DIR / output_name
-        cv2.imwrite(str(output_path), annotated_image)
+        cv2.imwrite(str(output_path), annotated)
 
-        # Extract predictions
-        predictions = extract_predictions_from_yolo(results, "model_u")
+        predictions = extract_predictions_from_yolo(results, model_name)
 
         return {
             "filename": filename,
@@ -305,21 +314,22 @@ async def predict_with_visualization(
             "model": model_name,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Visualization failed for %s: %s", filename, e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
-        if save_path.exists():
-            os.remove(save_path)
+        try:
+            if save_path.exists():
+                save_path.unlink()
+        except Exception:
+            pass
 
 
 @app.post("/predict-models")
 async def predict_multiple_models(image: UploadFile = File(...)):
-    """
-    Run inference on all available models for comparison.
-    Useful for clinical validation.
-    """
-    filename = image.filename or "uploaded_image"
-    filename = Path(filename).name
+    filename = Path(image.filename or "uploaded_image").name
     suffix = Path(filename).suffix.lower()
 
     if suffix not in ALLOWED_EXTENSIONS:
@@ -332,16 +342,17 @@ async def predict_multiple_models(image: UploadFile = File(...)):
             shutil.copyfileobj(image.file, buffer)
 
         if not LOADED_MODELS:
-            raise HTTPException(status_code=503, detail="No models loaded")
+            raise HTTPException(status_code=503, detail="No models loaded.")
 
-        # Run on all models
-        all_predictions = {}
-        for model_name in LOADED_MODELS.keys():
+        all_predictions: Dict[str, List[Dict[str, Any]]] = {}
+
+        for model_name in LOADED_MODELS:
             try:
-                preds = run_inference(str(save_path), model_name=model_name)
-                all_predictions[model_name] = preds
+                all_predictions[model_name] = run_inference(
+                    str(save_path), model_name=model_name
+                )
             except Exception as e:
-                print(f"[ERROR] {model_name} failed: {e}")
+                logger.warning("Model %s failed: %s", model_name, e)
                 all_predictions[model_name] = []
 
         return {
@@ -349,8 +360,14 @@ async def predict_multiple_models(image: UploadFile = File(...)):
             "models": all_predictions,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Batch inference failed for %s: %s", filename, e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
-        if save_path.exists():
-            os.remove(save_path)
+        try:
+            if save_path.exists():
+                save_path.unlink()
+        except Exception:
+            pass

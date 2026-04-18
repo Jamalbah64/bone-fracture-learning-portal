@@ -9,5 +9,5 @@ axios
 
 
 # pip install -r requirements.txt - this is to run the mock_api.py
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-pip install ultralytics
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# pip install ultralytics
