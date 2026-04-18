@@ -1,31 +1,44 @@
-import os
+# Import standard libraries
+import sys
 import shutil
 import logging
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
+# Import third-party libraries
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import cv2
 
-try:
-    import cv2
-except ImportError:
-    cv2 = None
+# Set up paths and load YOLO model
+BASE_DIR = Path(__file__).parent
+FCE_REPO_DIR = BASE_DIR / "FCE-YOLOv8"
+FCE_ULTRALYTICS_DIR = FCE_REPO_DIR / "ultralytics"
 
-YOLO = None
+# Add FCE-YOLOv8 to sys.path if it exists
+if FCE_ULTRALYTICS_DIR.exists():
+    sys.path.insert(0, str(FCE_REPO_DIR))
 
+# Add ultralytics from FCE-YOLOv8 to sys.pat
+from ultralytics import YOLO
+
+# Log setup for debugging and monitoring
 logger = logging.getLogger("mock_api")
 logging.basicConfig(level=logging.INFO)
 
+# Initialize FastAPI app and set up upload directory
 app = FastAPI()
 
+# Create a temporary directory for uploads and serve it as static files
 UPLOAD_DIR = Path("./temp_uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/temp_uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="temp_uploads")
 
+# Extensions and content types allowed for upload
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dcm", ".dicom"}
 
+# Common medical imaging content types
 ALLOWED_CONTENT_TYPES = {
     "image/png",
     "image/jpeg",
@@ -39,14 +52,13 @@ ALLOWED_CONTENT_TYPES = {
     "application/octet-stream",
 }
 
-BASE_DIR = Path(__file__).parent
+# Define paths for model weights and mapping of class IDs to AO codes
 DATA_DIR = BASE_DIR / "data"
 
 MODEL_DIRS = {
     "model_u": DATA_DIR / "Model_U",
     "model_a": DATA_DIR / "Model_A",
     "model_b": DATA_DIR / "Model_B",
-    "model_fce": DATA_DIR / "FCE_Model",
 }
 
 FRACTURE_CLASSES = {
@@ -60,9 +72,11 @@ FRACTURE_CLASSES = {
     7: "22-D/2.1",
 }
 
+# Dictionary to hold loaded models in memory
 LOADED_MODELS: Dict[str, Any] = {}
 
 
+# Function to find weight files in a given model directory
 def _find_weight_file(model_dir: Path) -> Optional[str]:
     if not model_dir.exists():
         return None
@@ -75,22 +89,21 @@ def _find_weight_file(model_dir: Path) -> Optional[str]:
     return None
 
 
+# Function to load a YOLO model from a given weight path and store it in the LOADED_MODELS dictionary
 def _load_model(weight_path: str, model_name: str) -> None:
-    global YOLO
-
-    if YOLO is None:
-        from ultralytics import YOLO as UltralyticsYOLO
-
-        YOLO = UltralyticsYOLO
-
     model = YOLO(weight_path)
+    print(model_name, model.names)
     LOADED_MODELS[model_name] = model
-    logger.info("%s loaded from %s", model_name, weight_path)
+    logger.info(
+        "%s loaded from %s", model_name, weight_path
+    )  # Log successful model loading
 
 
+# Function to load all models from specific directories and handle any exceptions that occur during loading
 def load_models() -> None:
     for model_name, model_dir in MODEL_DIRS.items():
         try:
+            # Check if the model directory exists and contains subdirectories
             if model_dir.exists() and any(p.is_dir() for p in model_dir.iterdir()):
                 for sub_dir in sorted([p for p in model_dir.iterdir() if p.is_dir()]):
                     sub_model_name = f"{model_name}_{sub_dir.name.lower()}"
@@ -119,6 +132,7 @@ def load_models() -> None:
 
 load_models()
 
+# Set up CORS middleware to allow cross-origin requests from any origin
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -128,8 +142,11 @@ app.add_middleware(
 )
 
 
+# Function to extract predictions from YOLO results
+# and format them into a list of dictionaries containing
+# AO code, confidence, bounding box, and model name
 def extract_predictions_from_yolo(
-    results: Any, model_name: str, confidence_threshold: float = 0.25
+    results: Any, model_name: str, confidence_threshold: float = 0.05
 ) -> List[Dict[str, Any]]:
     predictions: List[Dict[str, Any]] = []
 
@@ -144,14 +161,16 @@ def extract_predictions_from_yolo(
 
     for i in range(len(boxes)):
         try:
+            # Debug logging to trace class IDs and confidence scores
+            class_id = int(boxes.cls[i])
             conf = float(boxes.conf[i])
+            print("class_id:", class_id, "confidence:", conf)
 
             if conf < confidence_threshold:
                 continue
 
             class_id = int(boxes.cls[i])
             ao_code = FRACTURE_CLASSES.get(class_id, f"UNKNOWN_{class_id}")
-
             x1, y1, x2, y2 = boxes.xyxyn[i]
 
             bbox_center = [
@@ -175,25 +194,24 @@ def extract_predictions_from_yolo(
     return predictions
 
 
+# Function to run inference on an image using a specified model and return formatted predictions
 def run_inference(image_path: str, model_name: str = "model_u") -> List[Dict[str, Any]]:
     if model_name not in LOADED_MODELS:
         raise ValueError(f"Model '{model_name}' not loaded")
 
     model = LOADED_MODELS[model_name]
-
-    try:
-        results = model.predict(
-            source=image_path,
-            conf=0.25,
-            iou=0.45,
-            imgsz=640,
-            verbose=False,
-        )
-        return extract_predictions_from_yolo(results, model_name)
-    except Exception as e:
-        raise RuntimeError(f"Inference failed for model '{model_name}'") from e
+    results = model.predict(
+        source=image_path,
+        conf=0.05,
+        iou=0.45,
+        imgsz=640,
+        verbose=False,
+        device="cpu",
+    )
+    return extract_predictions_from_yolo(results, model_name)
 
 
+# Check to see if API is running and return a message along with the list of loaded models
 @app.get("/")
 def root() -> Dict[str, Any]:
     return {
@@ -202,6 +220,7 @@ def root() -> Dict[str, Any]:
     }
 
 
+# Health check endpoint to veriy API status
 @app.get("/health")
 def health() -> Dict[str, Any]:
     return {
@@ -211,6 +230,8 @@ def health() -> Dict[str, Any]:
     }
 
 
+# Endpoint to handle image uploads, model inference and return predictions
+# May not be needed because of /predict-with-visualization but can be used for testing and debugging
 @app.post("/predict-upload")
 async def predict_upload(image: UploadFile = File(...), model: Optional[str] = None):
     filename = Path(image.filename or "uploaded_image").name
@@ -263,6 +284,7 @@ async def predict_upload(image: UploadFile = File(...), model: Optional[str] = N
             pass
 
 
+# Endpoint to handle image uploads, model inference, and returning predictions along with the filename, model used, and a URL to the annotated image with bounding boxes drawn
 @app.post("/predict-with-visualization")
 async def predict_with_visualization(
     image: UploadFile = File(...), model: Optional[str] = None
@@ -272,11 +294,6 @@ async def predict_with_visualization(
 
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Invalid image type")
-
-    if cv2 is None:
-        raise HTTPException(
-            status_code=500, detail="OpenCV is required for visualization"
-        )
 
     save_path = UPLOAD_DIR / filename
 
@@ -296,7 +313,12 @@ async def predict_with_visualization(
 
         model = LOADED_MODELS[model_name]
         results = model.predict(
-            str(save_path), conf=0.25, iou=0.45, imgsz=640, verbose=False
+            str(save_path),
+            conf=0.05,
+            iou=0.45,
+            imgsz=640,
+            verbose=False,
+            device="cpu",
         )
         annotated = results[0].plot()
 
@@ -327,6 +349,9 @@ async def predict_with_visualization(
             pass
 
 
+# Endpoint to handle image uploads, run inference on all loaded models.
+# Also return predictions along with the filename,
+# and a dictionary of model names to their respective predictions
 @app.post("/predict-models")
 async def predict_multiple_models(image: UploadFile = File(...)):
     filename = Path(image.filename or "uploaded_image").name
