@@ -10,22 +10,40 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import cv2
+import torch
+import dill
+import cpuinfo
 
 # Set up paths and load YOLO model
-BASE_DIR = Path(__file__).parent
-FCE_REPO_DIR = BASE_DIR / "data"
-FCE_ULTRALYTICS_DIR = FCE_REPO_DIR / "ultralytics"
+BASE_DIR = Path(__file__).resolve().parent
+FCE_REPO_DIR = (BASE_DIR / "FCE-YOLOv8").resolve()
+FCE_ULTRALYTICS_DIR = (FCE_REPO_DIR / "ultralytics").resolve()
 
 # Add FCE-YOLOv8 to sys.path if it exists
-if FCE_ULTRALYTICS_DIR.exists():
-    sys.path.insert(0, str(FCE_REPO_DIR))
+if not FCE_ULTRALYTICS_DIR.exists():
+    raise RuntimeError(f"Custom ultralytics repo not found at {FCE_ULTRALYTICS_DIR}")
+
+sys.path = [str(FCE_REPO_DIR)] + [
+    p for p in sys.path if Path(p).resolve() != FCE_REPO_DIR
+]
 
 # Add ultralytics from FCE-YOLOv8 to sys.pat
 from ultralytics import YOLO
+import ultralytics
+from ultralytics.nn.tasks import DetectionModel
+
+torch.serialization.add_safe_globals(
+    [
+        DetectionModel,
+        dill._dill._load_type,
+        torch.nn.Sequential,
+    ]
+)
 
 # Log setup for debugging and monitoring
 logger = logging.getLogger("fracture_api")
 logging.basicConfig(level=logging.INFO)
+logger.info("Ultralytics loaded from: %s", ultralytics.__file__)
 
 # Initialize FastAPI app and set up upload directory
 app = FastAPI()
@@ -211,6 +229,76 @@ def run_inference(image_path: str, model_name: str = "model_u") -> List[Dict[str
     return extract_predictions_from_yolo(results, model_name)
 
 
+# Function to run inference on two images together using model_u and return formatted predictions
+def run_dual_inference(
+    image_path_1: str,
+    image_path_2: str,
+    model_name: str = "model_u",
+) -> List[Dict[str, Any]]:
+    if model_name not in LOADED_MODELS:
+        raise ValueError(f"Model '{model_name}' not loaded")
+
+    model = LOADED_MODELS[model_name]
+
+    # Replace this placeholder logic with the actual paired-projection inference path
+    # from the custom FCE-YOLOv8 model if model_u was trained to jointly consume both views.
+    results_projection1 = model.predict(
+        source=image_path_1,
+        conf=0.05,
+        iou=0.45,
+        imgsz=640,
+        verbose=False,
+        device="cpu",
+    )
+
+    results_projection2 = model.predict(
+        source=image_path_2,
+        conf=0.05,
+        iou=0.45,
+        imgsz=640,
+        verbose=False,
+        device="cpu",
+    )
+
+    predictions_projection1 = extract_predictions_from_yolo(
+        results_projection1, f"{model_name}_projection1"
+    )
+    predictions_projection2 = extract_predictions_from_yolo(
+        results_projection2, f"{model_name}_projection2"
+    )
+
+    return predictions_projection1 + predictions_projection2
+
+
+# Function to validate uploaded images by checking their file extensions and content types against allowed lists above
+def validate_uploaded_image(upload: UploadFile) -> str:
+    filename = Path(upload.filename or "uploaded_image").name
+    suffix = Path(filename).suffix.lower()
+
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid image. Please upload only X-rays, MRIs, or CT scans.",
+        )
+
+    content_type = upload.content_type or ""
+    if content_type and content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file type. Please upload JPG, PNG, TIFF, or DICOM images.",
+        )
+
+    return filename
+
+
+# Function to validate uploaded images and ensure they're correct for processing
+def save_upload_file(upload: UploadFile, filename: str) -> Path:
+    save_path = UPLOAD_DIR / filename
+    with save_path.open("wb") as buffer:
+        shutil.copyfileobj(upload.file, buffer)
+    return save_path
+
+
 # Check to see if API is running and return a message along with the list of loaded models
 @app.get("/")
 def root() -> Dict[str, Any]:
@@ -234,22 +322,7 @@ def health() -> Dict[str, Any]:
 # May not be needed because of /predict-with-visualization but can be used for testing and debugging
 @app.post("/predict-upload")
 async def predict_upload(image: UploadFile = File(...), model: Optional[str] = None):
-    filename = Path(image.filename or "uploaded_image").name
-    suffix = Path(filename).suffix.lower()
-
-    if suffix not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid image. Please upload only X-rays, MRIs, or CT scans.",
-        )
-
-    content_type = image.content_type or ""
-    if content_type and content_type not in ALLOWED_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail="Unsupported file type. Please upload JPG, PNG, TIFF, or DICOM images.",
-        )
-
+    filename = validate_uploaded_image(image)
     save_path = UPLOAD_DIR / filename
 
     try:
@@ -289,12 +362,7 @@ async def predict_upload(image: UploadFile = File(...), model: Optional[str] = N
 async def predict_with_visualization(
     image: UploadFile = File(...), model: Optional[str] = None
 ):
-    filename = Path(image.filename or "uploaded_image").name
-    suffix = Path(filename).suffix.lower()
-
-    if suffix not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail="Invalid image type")
-
+    filename = validate_uploaded_image(image)
     save_path = UPLOAD_DIR / filename
 
     try:
@@ -311,8 +379,8 @@ async def predict_with_visualization(
                 status_code=400, detail=f"Model '{model_name}' not available"
             )
 
-        model = LOADED_MODELS[model_name]
-        results = model.predict(
+        model_instance = LOADED_MODELS[model_name]
+        results = model_instance.predict(
             str(save_path),
             conf=0.05,
             iou=0.45,
@@ -354,12 +422,7 @@ async def predict_with_visualization(
 # and a dictionary of model names to their respective predictions
 @app.post("/predict-models")
 async def predict_multiple_models(image: UploadFile = File(...)):
-    filename = Path(image.filename or "uploaded_image").name
-    suffix = Path(filename).suffix.lower()
-
-    if suffix not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail="Invalid image type")
-
+    filename = validate_uploaded_image(image)
     save_path = UPLOAD_DIR / filename
 
     try:
@@ -394,5 +457,69 @@ async def predict_multiple_models(image: UploadFile = File(...)):
         try:
             if save_path.exists():
                 save_path.unlink()
+        except Exception:
+            pass
+
+
+# Endpoint to handle multiple image uploads and run inference on all loaded models for each image.
+@app.post("/predict-all-projections")
+async def predict_all_projections(
+    projection1: UploadFile = File(...),
+    projection2: UploadFile = File(...),
+):
+    filename1 = validate_uploaded_image(projection1)
+    filename2 = validate_uploaded_image(projection2)
+
+    save_path1 = UPLOAD_DIR / f"projection1_{filename1}"
+    save_path2 = UPLOAD_DIR / f"projection2_{filename2}"
+
+    try:
+        with save_path1.open("wb") as buffer:
+            shutil.copyfileobj(projection1.file, buffer)
+
+        with save_path2.open("wb") as buffer:
+            shutil.copyfileobj(projection2.file, buffer)
+
+        if not LOADED_MODELS:
+            raise HTTPException(status_code=503, detail="No models loaded.")
+
+        if "model_a" not in LOADED_MODELS:
+            raise HTTPException(status_code=503, detail="model_a is not loaded.")
+        if "model_b" not in LOADED_MODELS:
+            raise HTTPException(status_code=503, detail="model_b is not loaded.")
+        if "model_u" not in LOADED_MODELS:
+            raise HTTPException(status_code=503, detail="model_u is not loaded.")
+
+        model_a_predictions = run_inference(str(save_path1), model_name="model_a")
+        model_b_predictions = run_inference(str(save_path2), model_name="model_b")
+        model_u_predictions = run_dual_inference(
+            str(save_path1), str(save_path2), model_name="model_u"
+        )
+
+        return {
+            "projection1_filename": filename1,
+            "projection2_filename": filename2,
+            "results": {
+                "model_a": model_a_predictions,
+                "model_b": model_b_predictions,
+                "model_u": model_u_predictions,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Dual projection inference failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    finally:
+        try:
+            if save_path1.exists():
+                save_path1.unlink()
+        except Exception:
+            pass
+
+        try:
+            if save_path2.exists():
+                save_path2.unlink()
         except Exception:
             pass

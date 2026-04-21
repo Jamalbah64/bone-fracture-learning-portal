@@ -1,12 +1,25 @@
 fastapi
 uvicorn[standard]
-pandas
-numpy
+
 python-multipart
-pydantic
+opencv-python
+pydicom
+numpy
 pillow
-opencv-python-headless
+
+torch
+torchvision
+torchaudio
+
 timm
+thop
+py-cpuinfo
+psutil
+PyYAML
+scipy
+matplotlib
+seaborn
+tqdm
 dill
 
 # To run the API:
