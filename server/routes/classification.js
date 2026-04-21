@@ -1,169 +1,155 @@
-import axios from "axios";
-import crypto from "crypto";
 import "dotenv/config";
 import express from "express";
-import FormData from "form-data";
+<<<<<<< HEAD
 import fs from "fs";
 import multer from "multer";
 import path from "path";
-import PatientAssignment from "../models/PatientAssignment.js";
-import Scan from "../models/Scan.js";
-import Users from "../models/Users.js";
+import { fileURLToPath } from "url";
+import { validateMedicalImage } from "../utils/medicalImageValidator.js";
+=======
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 
 const router = express.Router();
 const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
 
-const uploadDir = path.resolve("uploads");
+// Get __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Setup multer for file uploads
+const uploadDir = path.join(__dirname, "../uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const scanDir = path.resolve("uploads", "scans");
-if (!fs.existsSync(scanDir)) {
-  fs.mkdirSync(scanDir, { recursive: true });
-}
-
-const allowedExtensions = [".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dcm", ".dicom"];
-const allowedMimeTypes = [
-  "image/png",
-  "image/jpeg",
-  "image/jpg",
-  "image/tiff",
-  "application/dicom",
-  "application/dicom+json",
-  "application/x-dicom",
-  "application/octet-stream",
-];
-
-const upload = multer({
-  dest: uploadDir,
-  limits: {
-    fileSize: 25 * 1024 * 1024,
-    files: 1,
+const storage = multer.diskStorage({ // Save files to the uploads directory with a unique name
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
   },
-  fileFilter: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-
-    if (!allowedExtensions.includes(ext)) {
-      return cb(new Error("Invalid image. Please upload only X-rays, MRIs, or CT scans."));
-    }
-
-    const mimeOk = !file.mimetype || allowedMimeTypes.includes(file.mimetype);
-
-    if (!mimeOk) {
-      return cb(new Error("Unsupported file type. Please upload JPG, PNG, TIFF, or DICOM images."));
-    }
-
-    cb(null, true);
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}-${timestamp}${ext}`);
   },
 });
 
-router.post("/", upload.single("image"), async (req, res) => {
-  let uploadedPath = null;
+const upload = multer({ // Configure multer with storage and file size limit
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+});
 
+// Middleware to handle multer errors
+const handleMulterErrors = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    console.error("Multer error:", err.message);
+    return res.status(400).json({ error: `File upload error: ${err.message}` });
+  } else if (err) {
+    console.error("Unexpected error:", err.message);
+    return res.status(400).json({ error: `Upload error: ${err.message}` });
+  }
+  next();
+};
+
+// Route to handle file upload and classification
+router.post("/", upload.single("file"), handleMulterErrors, async (req, res) => {
+  // Main classification route
+  // Accepts an uploaded image, validates it, forwards to FastAPI predict endpoint,
+  // and returns the prediction payload. Optional `model` can be provided either
+  // as a multipart form field or as a query parameter and will be forwarded.
+
+  // Ensure a file was uploaded
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  // Validate that this looks like a supported medical image
+  const validation = validateMedicalImage(req.file);
+  if (!validation.valid) {
+    fs.unlink(req.file.path, (err) => { if (err) console.error("Failed to delete invalid file:", err); });
+    return res.status(400).json({ error: validation.reason });
+  }
+
+  // Determine if a specific model was requested (form field or query)
+  const selectedModel = (req.body && req.body.model) || req.query.model || undefined;
+  const modelQuery = selectedModel ? `?model=${encodeURIComponent(selectedModel)}` : "";
+  const url = `${FASTAPI_URL}/predict-upload${modelQuery}`;
+
+  // Prepare form data to forward the file to FastAPI
+  const fileBuffer = fs.readFileSync(req.file.path);
+  const formData = new FormData();
+  const blob = new Blob([fileBuffer], { type: req.file.mimetype || 'application/octet-stream' });
+  formData.append('image', blob, req.file.originalname);
+
+  let fastapiResponse;
+  let fastapiData = null;
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No medical image uploaded" });
+    fastapiResponse = await fetch(url, { method: 'POST', body: formData });
+
+    const contentType = fastapiResponse.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      fastapiData = await fastapiResponse.json();
+    } else {
+      const raw = await fastapiResponse.text();
+      console.error('FastAPI returned non-JSON response:', raw.slice(0, 1000));
+      return res.status(502).json({ error: 'FastAPI returned non-JSON response', details: raw.slice(0, 1000) });
     }
 
-    uploadedPath = req.file.path;
-    const patientId = (req.body.patientId || "").trim() || "unassigned";
-
-    console.log("Received upload from client:", {
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      path: uploadedPath,
-      patientId,
-    });
-
-    const form = new FormData();
-    form.append("image", fs.createReadStream(uploadedPath), {
-      filename: req.file.originalname,
-      contentType: req.file.mimetype || "application/octet-stream",
-    });
-
-    const response = await axios.post(`${FASTAPI_URL}/predict-upload`, form, {
-      headers: form.getHeaders(),
-      maxBodyLength: Infinity,
-      maxContentLength: Infinity,
-      validateStatus: () => true,
-    });
-
-    console.log("FastAPI response status:", response.status);
-    console.log("FastAPI response data:", response.data);
-
-    if (response.status >= 400) {
-      return res.status(response.status).json({
-        error: response.data?.detail || response.data?.error || "Prediction failed",
-      });
+    if (!fastapiResponse.ok) {
+      return res.status(fastapiResponse.status).json({ error: fastapiData.detail || fastapiData.error || 'Prediction failed' });
     }
 
-    const ext = path.extname(req.file.originalname) || ".png";
-    const hash = crypto.randomBytes(8).toString("hex");
-    const permName = `${Date.now()}-${hash}${ext}`;
-    const permPath = path.join(scanDir, permName);
-    fs.copyFileSync(uploadedPath, permPath);
-
-    let patientUser = null;
-    if (patientId !== "unassigned") {
-      const patient = await Users.findOne({
-        username: patientId,
-        role: "patient",
-      });
-      if (patient) patientUser = patient._id;
-    }
-
-    const apiData = response.data;
-    const modelSlots = [
-      { key: "model_a", label: "Fracture model A" },
-      { key: "model_b", label: "Fracture model B" },
-      { key: "model_c", label: "Fracture model C" },
-    ];
-    const models = modelSlots.map((slot) => ({
-      ...slot,
-      filename: apiData.filename,
-      predictions: apiData.predictions ?? [],
-      num_labels: apiData.num_labels ?? 0,
-    }));
-
-    const scan = await Scan.create({
-      patientUser,
-      patientId,
-      uploadedBy: req.user.userId,
-      filename: apiData.filename || req.file.originalname,
-      imagePath: permPath,
-      models,
-    });
-
-    if (patientUser) {
-      const alreadyAssigned = await PatientAssignment.findOne({
-        patientUser,
-        radiologist: req.user.userId,
-      });
-      if (!alreadyAssigned) {
-        await PatientAssignment.create({
-          patientUser,
-          radiologist: req.user.userId,
-          assignedBy: req.user.userId,
-        });
-      }
-    }
-
-    return res.json({ ...apiData, scanId: scan._id });
+    // Return FastAPI payload plus original filename
+    return res.json({ ...fastapiData, filename: req.file.originalname });
   } catch (err) {
-    console.error("Classification route error:", err.response?.data || err.message || err);
-
-    return res.status(err.response?.status || 500).json({
-      error:
-        err.response?.data?.detail ||
-        err.response?.data?.error ||
-        err.message ||
-        "Classification failed",
-    });
+    console.error('Classification route error when calling FastAPI:', err);
+    return res.status(500).json({ error: 'Classification failed', details: err.message || String(err) });
   } finally {
-    if (uploadedPath && fs.existsSync(uploadedPath)) {
-      fs.unlinkSync(uploadedPath);
+    // Always attempt to remove the temporary uploaded file
+    fs.unlink(req.file.path, (err) => { if (err) console.error('Failed to delete uploaded file after processing:', err); });
+  }
+});
+
+// Legacy route for filestem-based classification (kept for backward compatibility)
+router.post("/legacy", async (req, res) => {
+  try {
+    const { filestem } = req.body;
+
+    if (!filestem || typeof filestem !== "string") {
+      return res.status(400).json({ error: "Missing or invalid filestem" });
     }
+
+    const response = await fetch(`${FASTAPI_URL}/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filestem: filestem.trim() }),
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+
+    if (!contentType.includes("application/json")) {
+      const raw = await response.text();
+      return res.status(502).json({
+        error: "FastAPI returned non-JSON content",
+        details: raw.slice(0, 300),
+      });
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: data.detail || data.error || "Prediction failed",
+      });
+    }
+
+    return res.json(data);
+  } catch (err) {
+    console.error("Classification route error:", err);
+    return res.status(500).json({
+      error: "Classification failed",
+      details: err.message || String(err),
+    });
   }
 });
 

@@ -24,7 +24,7 @@ function canAccessPath(role, path) {
   if (role === "head_radiologist") return true;
   if (role === "radiologist") return true;
   if (role === "patient") {
-    return ["/", "/timeline", "/settings", "/patients", "/shared", "/analytics"].some(
+    return ["/", "/timeline", "/settings", "/patients"].some(
       (allowed) => path === allowed || path.startsWith(`${allowed}/`)
     );
   }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { fetchScans, scanImageUrl } from "../api/scans";
 import { fetchPatients } from "../api/patients";
 import ShareButton from "../components/ShareButton";
@@ -15,6 +15,10 @@ function PatientTimeline() {
   const [scanLoading, setScanLoading] = useState(false);
   const [activeImage, setActiveImage] = useState(null);
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setSelectedPatient(routePatient ? decodeURIComponent(routePatient) : null);
+  }, [routePatient]);
 
   useEffect(() => {
     setMounted(false);
@@ -100,14 +104,20 @@ function PatientTimeline() {
                       {p.username}
                     </option>
                   ))}
-                </select>
-              </div>
-            )}
-
-            {scanLoading ? (
+                </div>
+              )
+            ) : scanLoading ? (
               <p className="text-white/60">Loading scans…</p>
             ) : selectedPatient && scans.length > 0 ? (
               <div className="overflow-x-auto pb-6">
+                <div className="mb-5">
+                  <Link
+                    to="/timeline"
+                    className="text-sm text-sky-300 hover:text-sky-200 transition"
+                  >
+                    ← Back to patients
+                  </Link>
+                </div>
                 <div className="flex gap-6 min-w-max">
                   {scans.map((scan, index) => {
                     const top = topPrediction(scan);

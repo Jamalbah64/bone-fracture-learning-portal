@@ -1,20 +1,44 @@
-import os
+# Import standard libraries
+import sys
 import shutil
+import logging
 from pathlib import Path
-from collections import Counter
-import hashlib
+from typing import List, Optional, Dict, Any
 
-import numpy as np
-import pandas as pd
-from fastapi import FastAPI, HTTPException, UploadFile, File
+# Import third-party libraries
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import cv2
 
-app = FastAPI(title="mock_api")
+# Set up paths and load YOLO model
+BASE_DIR = Path(__file__).parent
+FCE_REPO_DIR = BASE_DIR / "FCE-YOLOv8"
+FCE_ULTRALYTICS_DIR = FCE_REPO_DIR / "ultralytics"
 
+# Add FCE-YOLOv8 to sys.path if it exists
+if FCE_ULTRALYTICS_DIR.exists():
+    sys.path.insert(0, str(FCE_REPO_DIR))
+
+# Add ultralytics from FCE-YOLOv8 to sys.pat
+from ultralytics import YOLO
+
+# Log setup for debugging and monitoring
+logger = logging.getLogger("mock_api")
+logging.basicConfig(level=logging.INFO)
+
+# Initialize FastAPI app and set up upload directory
+app = FastAPI()
+
+# Create a temporary directory for uploads and serve it as static files
 UPLOAD_DIR = Path("./temp_uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/temp_uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="temp_uploads")
 
+# Extensions and content types allowed for upload
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".dcm", ".dicom"}
+
+# Common medical imaging content types
 ALLOWED_CONTENT_TYPES = {
     "image/png",
     "image/jpeg",
@@ -28,8 +52,87 @@ ALLOWED_CONTENT_TYPES = {
     "application/octet-stream",
 }
 
-df = pd.read_csv("./data/dataset.csv")
+# Define paths for model weights and mapping of class IDs to AO codes
+DATA_DIR = BASE_DIR / "data"
 
+MODEL_DIRS = {
+    "model_u": DATA_DIR / "Model_U",
+    "model_a": DATA_DIR / "Model_A",
+    "model_b": DATA_DIR / "Model_B",
+}
+
+FRACTURE_CLASSES = {
+    0: "23r-M/2.1",
+    1: "23r-M/3.1",
+    2: "23-M/3.1",
+    3: "23-M/2.1",
+    4: "23r-E/2.1",
+    5: "22r-D/2.1",
+    6: "23r-E/1",
+    7: "22-D/2.1",
+}
+
+# Dictionary to hold loaded models in memory
+LOADED_MODELS: Dict[str, Any] = {}
+
+
+# Function to find weight files in a given model directory
+def _find_weight_file(model_dir: Path) -> Optional[str]:
+    if not model_dir.exists():
+        return None
+
+    for candidate in ("best.pt", "last.pt"):
+        weight_path = model_dir / candidate
+        if weight_path.exists():
+            return str(weight_path.resolve())
+
+    return None
+
+
+# Function to load a YOLO model from a given weight path and store it in the LOADED_MODELS dictionary
+def _load_model(weight_path: str, model_name: str) -> None:
+    model = YOLO(weight_path)
+    print(model_name, model.names)
+    LOADED_MODELS[model_name] = model
+    logger.info(
+        "%s loaded from %s", model_name, weight_path
+    )  # Log successful model loading
+
+
+# Function to load all models from specific directories and handle any exceptions that occur during loading
+def load_models() -> None:
+    for model_name, model_dir in MODEL_DIRS.items():
+        try:
+            # Check if the model directory exists and contains subdirectories
+            if model_dir.exists() and any(p.is_dir() for p in model_dir.iterdir()):
+                for sub_dir in sorted([p for p in model_dir.iterdir() if p.is_dir()]):
+                    sub_model_name = f"{model_name}_{sub_dir.name.lower()}"
+                    weight_path = _find_weight_file(sub_dir)
+
+                    if not weight_path:
+                        logger.info(
+                            "No weight file found for %s in %s", sub_model_name, sub_dir
+                        )
+                        continue
+
+                    _load_model(weight_path, sub_model_name)
+                continue
+
+            weight_path = _find_weight_file(model_dir)
+
+            if not weight_path:
+                logger.info("No weight file found for %s in %s", model_name, model_dir)
+                continue
+
+            _load_model(weight_path, model_name)
+
+        except Exception as e:
+            logger.warning("Failed to load %s: %s", model_name, e)
+
+
+load_models()
+
+# Set up CORS middleware to allow cross-origin requests from any origin
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,79 +141,101 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-all_codes = []
-label_counts_per_image = []
 
-for entry in df["ao_classification"].fillna(""):
-    codes = [c.strip() for c in str(entry).split(";") if c.strip()]
-    all_codes.extend(codes)
-    label_counts_per_image.append(len(codes))
+# Function to extract predictions from YOLO results
+# and format them into a list of dictionaries containing
+# AO code, confidence, bounding box, and model name
+def extract_predictions_from_yolo(
+    results: Any, model_name: str, confidence_threshold: float = 0.05
+) -> List[Dict[str, Any]]:
+    predictions: List[Dict[str, Any]] = []
 
-class_counts = Counter(all_codes)
-max_class_count = max(class_counts.values()) if class_counts else 1
-avg_labels_per_image = (
-    np.mean(label_counts_per_image) if label_counts_per_image else 1.0
-)
+    if not results:
+        return predictions
+
+    result = results[0]
+    boxes = getattr(result, "boxes", None)
+
+    if not boxes:
+        return predictions
+
+    for i in range(len(boxes)):
+        try:
+            # Debug logging to trace class IDs and confidence scores
+            class_id = int(boxes.cls[i])
+            conf = float(boxes.conf[i])
+            print("class_id:", class_id, "confidence:", conf)
+
+            if conf < confidence_threshold:
+                continue
+
+            class_id = int(boxes.cls[i])
+            ao_code = FRACTURE_CLASSES.get(class_id, f"UNKNOWN_{class_id}")
+            x1, y1, x2, y2 = boxes.xyxyn[i]
+
+            bbox_center = [
+                float((x1 + x2) / 2.0),
+                float((y1 + y2) / 2.0),
+                float(x2 - x1),
+                float(y2 - y1),
+            ]
+
+            predictions.append(
+                {
+                    "code": ao_code,
+                    "confidence": round(conf, 4),
+                    "bbox": bbox_center,
+                    "model": model_name,
+                }
+            )
+        except Exception:
+            continue
+
+    return predictions
 
 
-def get_family(code: str) -> str:
-    code = str(code).strip()
-    if len(code) >= 3:
-        return code[:3]
-    return code
+# Function to run inference on an image using a specified model and return formatted predictions
+def run_inference(image_path: str, model_name: str = "model_u") -> List[Dict[str, Any]]:
+    if model_name not in LOADED_MODELS:
+        raise ValueError(f"Model '{model_name}' not loaded")
+
+    model = LOADED_MODELS[model_name]
+    results = model.predict(
+        source=image_path,
+        conf=0.05,
+        iou=0.45,
+        imgsz=640,
+        verbose=False,
+        device="cpu",
+    )
+    return extract_predictions_from_yolo(results, model_name)
 
 
-family_counts = Counter(get_family(code) for code in all_codes)
-max_family_count = max(family_counts.values()) if family_counts else 1
-
-
-def stable_noise(key: str, low: float = -0.015, high: float = 0.015) -> float:
-    digest = hashlib.md5(key.encode("utf-8")).hexdigest()
-    value = int(digest[:8], 16) / 0xFFFFFFFF
-    return low + (high - low) * value
-
-
-def mock_confidence(code: str, num_labels: int, filename_key: str) -> float:
-    code = str(code).strip()
-
-    class_freq_ratio = class_counts.get(code, 1) / max_class_count
-    family = get_family(code)
-    family_freq_ratio = family_counts.get(family, 1) / max_family_count
-
-    confidence = 0.68
-    confidence += class_freq_ratio * 0.16
-    confidence -= family_freq_ratio * 0.06
-    confidence -= max(0, num_labels - 1) * 0.05
-
-    if num_labels > avg_labels_per_image:
-        confidence -= 0.02
-
-    confidence += stable_noise(f"{filename_key}|{code}")
-    confidence = max(0.52, min(confidence, 0.92))
-    return round(confidence, 2)
-
-
+# Check to see if API is running and return a message along with the list of loaded models
 @app.get("/")
-def root():
-    return {"message": "FrACT API is running!"}
+def root() -> Dict[str, Any]:
+    return {
+        "message": "FrACT API is running!",
+        "models_loaded": list(LOADED_MODELS.keys()),
+    }
 
 
+# Health check endpoint to veriy API status
 @app.get("/health")
-def health():
-    return {"status": "ok"}
+def health() -> Dict[str, Any]:
+    return {
+        "status": "ok",
+        "models_loaded": list(LOADED_MODELS.keys()),
+        "num_models": len(LOADED_MODELS),
+    }
 
 
-# Legacy filestem prediction route intentionally removed for image-only workflow
-
-
+# Endpoint to handle image uploads, model inference and return predictions
+# May not be needed because of /predict-with-visualization but can be used for testing and debugging
 @app.post("/predict-upload")
-async def predict_upload(image: UploadFile = File(...)):
-    filename = image.filename or "uploaded_image"
-    filename = Path(filename).name
+async def predict_upload(image: UploadFile = File(...), model: Optional[str] = None):
+    filename = Path(image.filename or "uploaded_image").name
     suffix = Path(filename).suffix.lower()
-
-    print("Received filename:", filename)
-    print("Received content type:", image.content_type)
 
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(
@@ -127,18 +252,147 @@ async def predict_upload(image: UploadFile = File(...)):
 
     save_path = UPLOAD_DIR / filename
 
-    with save_path.open("wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
-
     try:
-        mock_predictions = [{"code": "23A", "confidence": 0.91}]
+        with save_path.open("wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        if not LOADED_MODELS:
+            raise HTTPException(status_code=503, detail="No models loaded.")
+
+        model_name = model or "model_u"
+        predictions = run_inference(str(save_path), model_name=model_name)
 
         return {
             "filename": filename,
-            "predictions": mock_predictions,
-            "num_labels": len(mock_predictions),
+            "predictions": predictions,
+            "num_labels": len(predictions),
+            "model": model_name,
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Inference failed for %s: %s", filename, e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
-        if save_path.exists():
-            os.remove(save_path)
+        try:
+            if save_path.exists():
+                save_path.unlink()
+        except Exception:
+            pass
+
+
+# Endpoint to handle image uploads, model inference, and returning predictions along with the filename, model used, and a URL to the annotated image with bounding boxes drawn
+@app.post("/predict-with-visualization")
+async def predict_with_visualization(
+    image: UploadFile = File(...), model: Optional[str] = None
+):
+    filename = Path(image.filename or "uploaded_image").name
+    suffix = Path(filename).suffix.lower()
+
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Invalid image type")
+
+    save_path = UPLOAD_DIR / filename
+
+    try:
+        with save_path.open("wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        if not LOADED_MODELS:
+            raise HTTPException(status_code=503, detail="No models loaded.")
+
+        model_name = model or "model_u"
+
+        if model_name not in LOADED_MODELS:
+            raise HTTPException(
+                status_code=400, detail=f"Model '{model_name}' not available"
+            )
+
+        model = LOADED_MODELS[model_name]
+        results = model.predict(
+            str(save_path),
+            conf=0.05,
+            iou=0.45,
+            imgsz=640,
+            verbose=False,
+            device="cpu",
+        )
+        annotated = results[0].plot()
+
+        output_name = f"annotated_{filename}"
+        output_path = UPLOAD_DIR / output_name
+        cv2.imwrite(str(output_path), annotated)
+
+        predictions = extract_predictions_from_yolo(results, model_name)
+
+        return {
+            "filename": filename,
+            "predictions": predictions,
+            "num_labels": len(predictions),
+            "annotated_image_url": f"/temp_uploads/{output_name}",
+            "model": model_name,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Visualization failed for %s: %s", filename, e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    finally:
+        try:
+            if save_path.exists():
+                save_path.unlink()
+        except Exception:
+            pass
+
+
+# Endpoint to handle image uploads, run inference on all loaded models.
+# Also return predictions along with the filename,
+# and a dictionary of model names to their respective predictions
+@app.post("/predict-models")
+async def predict_multiple_models(image: UploadFile = File(...)):
+    filename = Path(image.filename or "uploaded_image").name
+    suffix = Path(filename).suffix.lower()
+
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Invalid image type")
+
+    save_path = UPLOAD_DIR / filename
+
+    try:
+        with save_path.open("wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        if not LOADED_MODELS:
+            raise HTTPException(status_code=503, detail="No models loaded.")
+
+        all_predictions: Dict[str, List[Dict[str, Any]]] = {}
+
+        for model_name in LOADED_MODELS:
+            try:
+                all_predictions[model_name] = run_inference(
+                    str(save_path), model_name=model_name
+                )
+            except Exception as e:
+                logger.warning("Model %s failed: %s", model_name, e)
+                all_predictions[model_name] = []
+
+        return {
+            "filename": filename,
+            "models": all_predictions,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Batch inference failed for %s: %s", filename, e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    finally:
+        try:
+            if save_path.exists():
+                save_path.unlink()
+        except Exception:
+            pass

@@ -5,6 +5,24 @@ import Scan from "../models/Scan.js";
 
 const router = express.Router();
 
+// Builds entries for scans that reference a patient username (patientId string)
+// but have no linked patientUser record yet — e.g. scans uploaded for a patient
+// whose account hasn't been registered. Without this, such scans silently
+// disappear from the Analytics/Timeline patient lists even though they exist.
+async function findOrphanPatients(orphanFilter) {
+    const rows = await Scan.aggregate([
+        { $match: { ...orphanFilter, patientUser: null, patientId: { $nin: ["", "unassigned"] } } },
+        { $group: { _id: "$patientId", count: { $sum: 1 } } },
+    ]);
+    return rows.map((r) => ({
+        _id: `orphan:${r._id}`,
+        username: r._id,
+        role: "patient",
+        scanCount: r.count,
+        unregistered: true,
+    }));
+}
+
 router.get("/", async (req, res) => {
     try {
         const { userId, role } = req.user;
@@ -12,7 +30,12 @@ router.get("/", async (req, res) => {
         if (role === "patient") {
             const me = await Users.findById(userId).select("username role").lean();
             if (!me) return res.json([]);
-            const scanCount = await Scan.countDocuments({ patientUser: userId });
+            const scanCount = await Scan.countDocuments({
+                $or: [
+                    { patientUser: userId },
+                    { patientUser: null, patientId: me.username },
+                ],
+            });
             if (scanCount === 0) return res.json([]);
             return res.json([
                 { _id: me._id, username: me.username, role: me.role, scanCount },
@@ -24,29 +47,32 @@ router.get("/", async (req, res) => {
                 patientUser: { $ne: null },
             });
 
-            if (patientIdsWithScans.length === 0) return res.json([]);
+            const patients = patientIdsWithScans.length
+                ? await Users.find({
+                      _id: { $in: patientIdsWithScans },
+                      role: "patient",
+                  })
+                      .select("username role")
+                      .lean()
+                : [];
 
-            const patients = await Users.find({
-                _id: { $in: patientIdsWithScans },
-                role: "patient",
-            })
-                .select("username role")
-                .lean();
-
-            const counts = await Scan.aggregate([
-                { $match: { patientUser: { $in: patients.map((p) => p._id) } } },
-                { $group: { _id: "$patientUser", count: { $sum: 1 } } },
-            ]);
+            const counts = patients.length
+                ? await Scan.aggregate([
+                      { $match: { patientUser: { $in: patients.map((p) => p._id) } } },
+                      { $group: { _id: "$patientUser", count: { $sum: 1 } } },
+                  ])
+                : [];
             const countMap = Object.fromEntries(
                 counts.map((c) => [c._id.toString(), c.count])
             );
 
-            return res.json(
-                patients.map((p) => ({
-                    ...p,
-                    scanCount: countMap[p._id.toString()] || 0,
-                }))
-            );
+            const registered = patients.map((p) => ({
+                ...p,
+                scanCount: countMap[p._id.toString()] || 0,
+            }));
+
+            const orphans = await findOrphanPatients({});
+            return res.json([...registered, ...orphans]);
         }
 
         if (role === "radiologist") {
@@ -67,31 +93,34 @@ router.get("/", async (req, res) => {
                 ]),
             ];
 
-            if (allIds.length === 0) return res.json([]);
+            const patients = allIds.length
+                ? await Users.find({
+                      _id: { $in: allIds },
+                      role: "patient",
+                  })
+                      .select("username role")
+                      .lean()
+                : [];
 
-            const patients = await Users.find({
-                _id: { $in: allIds },
-                role: "patient",
-            })
-                .select("username role")
-                .lean();
-
-            const counts = await Scan.aggregate([
-                { $match: { patientUser: { $in: patients.map((p) => p._id) } } },
-                { $group: { _id: "$patientUser", count: { $sum: 1 } } },
-            ]);
+            const counts = patients.length
+                ? await Scan.aggregate([
+                      { $match: { patientUser: { $in: patients.map((p) => p._id) } } },
+                      { $group: { _id: "$patientUser", count: { $sum: 1 } } },
+                  ])
+                : [];
             const countMap = Object.fromEntries(
                 counts.map((c) => [c._id.toString(), c.count])
             );
 
-            return res.json(
-                patients
-                    .map((p) => ({
-                        ...p,
-                        scanCount: countMap[p._id.toString()] || 0,
-                    }))
-                    .filter((p) => p.scanCount > 0)
-            );
+            const registered = patients
+                .map((p) => ({
+                    ...p,
+                    scanCount: countMap[p._id.toString()] || 0,
+                }))
+                .filter((p) => p.scanCount > 0);
+
+            const orphans = await findOrphanPatients({ uploadedBy: userId });
+            return res.json([...registered, ...orphans]);
         }
 
         return res.json([]);

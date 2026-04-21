@@ -2,11 +2,55 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import User from "../models/index.js";
+import Scan from "../models/Scan.js";
+import PatientAssignment from "../models/PatientAssignment.js";
 import { AUTH_COOKIE_NAME, getCookieOptions } from "./cookies.js";
 import {
     createSession,
     revokeSessionByJti,
 } from "./sessionService.js";
+
+// When a new patient registers, claim any scans that were previously uploaded
+// for their username (before they had an account) by linking patientUser to
+// the new account and auto-creating assignments for the uploading radiologists.
+async function linkOrphanScans(newUser) {
+    if (!newUser || newUser.role !== "patient" || !newUser._id) return;
+    try {
+        const orphanScans = await Scan.find({
+            patientId: newUser.username,
+            patientUser: null,
+        })
+            .select("_id uploadedBy")
+            .lean();
+        if (orphanScans.length === 0) return;
+
+        await Scan.updateMany(
+            { _id: { $in: orphanScans.map((s) => s._id) } },
+            { $set: { patientUser: newUser._id } }
+        );
+
+        const uploaderIds = [
+            ...new Set(orphanScans.map((s) => String(s.uploadedBy))),
+        ];
+        await Promise.all(
+            uploaderIds.map(async (radId) => {
+                const exists = await PatientAssignment.findOne({
+                    patientUser: newUser._id,
+                    radiologist: radId,
+                });
+                if (!exists) {
+                    await PatientAssignment.create({
+                        patientUser: newUser._id,
+                        radiologist: radId,
+                        assignedBy: radId,
+                    });
+                }
+            })
+        );
+    } catch (err) {
+        console.error("linkOrphanScans error:", err);
+    }
+}
 
 function getTokenExpiryDate(hours = 2) {
     const expiresAt = new Date();
@@ -14,23 +58,19 @@ function getTokenExpiryDate(hours = 2) {
     return expiresAt;
 }
 
-const ROLE_ALIASES = {
-    clinician: "radiologist",
-    admin: "head_radiologist",
-};
-
-const ALLOWED_ROLES = ["patient", "radiologist", "head_radiologist"];
+const ALLOWED_ROLES = ["patient", "clinician", "radiologist", "head_radiologist"];
 const STAFF_ROLES = ["radiologist", "head_radiologist"];
 
 function normalizeRole(role) {
     if (!role) return "patient";
-    return ROLE_ALIASES[role] || role;
+    return role;
 }
 
 function normalizeStaffId(staffId) {
     return String(staffId ?? "").trim();
 }
 
+<<<<<<< HEAD
 export async function register(req, res) {
     try {
         const { username, password, role, staffId } = req.body;
@@ -51,18 +91,24 @@ export async function register(req, res) {
                 return res.status(400).json({ error: "Staff ID already in use" });
             }
         }
+=======
+export async function register(req, res) { // Endpoint for user registration
+    try { // Extract username, password, and role from the request body
+        const { username, password, role } = req.body;
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 
         const existing = await User.findOne({ username });
         if (existing) {
             return res.status(400).json({ error: "Username already in use" });
         }
 
-        await User.create({
+        const createdUser = await User.create({
             username,
             password,
             role: normalizedRole,
             staffId: STAFF_ROLES.includes(normalizedRole) ? normalizedStaffId : undefined
         });
+        await linkOrphanScans(createdUser);
         return res.status(201).json({ message: "User created" });
     } catch (err) {
         console.error("Registration error:", err && err.stack ? err.stack : err);
@@ -70,7 +116,7 @@ export async function register(req, res) {
     }
 }
 
-export async function login(req, res) {
+export async function login(req, res) { // Endpoint for user login
     try {
         const { username, password, staffId } = req.body;
         const normalizedStaffId = normalizeStaffId(staffId);
@@ -97,6 +143,7 @@ export async function login(req, res) {
             { expiresIn: "2h" }
         );
 
+<<<<<<< HEAD
         await createSession({
             userId: user._id,
             jti,
@@ -110,6 +157,10 @@ export async function login(req, res) {
         res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions());
 
         return res.json({
+=======
+        return res.json({
+            token,
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
             message: "Login successful",
             user: {
                 id: user._id,
