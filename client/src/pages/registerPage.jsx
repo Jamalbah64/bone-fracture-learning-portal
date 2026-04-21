@@ -10,6 +10,7 @@ function Register() {
   const [staffId, setStaffId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // 👈 NEW
 
   const requiresStaffId =
     role === "radiologist" || role === "head_radiologist";
@@ -66,6 +67,7 @@ function Register() {
         {/* FORM */}
         <form onSubmit={handleSubmit} className="space-y-5">
 
+          {/* USERNAME */}
           <input
             type="text"
             placeholder="Username"
@@ -75,14 +77,26 @@ function Register() {
             required
           />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-sky-400"
-            required
-          />
+          {/* PASSWORD WITH TOGGLE */}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"} // 👈 TOGGLE
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 pr-12 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-sky-400"
+              required
+            />
+
+            {/* TOGGLE BUTTON */}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition text-sm"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
 
           {/* ROLE SELECT */}
           <select
