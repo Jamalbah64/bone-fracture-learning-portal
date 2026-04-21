@@ -11,6 +11,7 @@ function NavBar({ user }) {
   const role = user?.role;
   const isStaff = STAFF_ROLES.includes(role);
   const isHead = role === "head_radiologist";
+  const canAccessAnalyticsAndShared = role !== "patient";
 
   const isActive = (path) =>
     path === "/"
@@ -69,9 +70,11 @@ function NavBar({ user }) {
               </Link>
             )}
 
-            <Link to="/analytics" className={linkClass(isActive("/analytics"))}>
-              Analytics
-            </Link>
+            {canAccessAnalyticsAndShared && (
+              <Link to="/analytics" className={linkClass(isActive("/analytics"))}>
+                Analytics
+              </Link>
+            )}
 
             <Link
               to="/timeline"
@@ -82,9 +85,11 @@ function NavBar({ user }) {
               Timeline
             </Link>
 
-            <Link to="/shared" className={linkClass(isActive("/shared"))}>
-              Shared
-            </Link>
+            {canAccessAnalyticsAndShared && (
+              <Link to="/shared" className={linkClass(isActive("/shared"))}>
+                Shared
+              </Link>
+            )}
 
             {(isHead || role === "radiologist") && (
               <Link to="/manage" className={linkClass(isActive("/manage"))}>
@@ -135,15 +140,19 @@ function NavBar({ user }) {
               AI Tool
             </Link>
           )}
-          <Link onClick={closeMenu} to="/analytics" className="py-2 text-white/80">
-            Analytics
-          </Link>
+          {canAccessAnalyticsAndShared && (
+            <Link onClick={closeMenu} to="/analytics" className="py-2 text-white/80">
+              Analytics
+            </Link>
+          )}
           <Link onClick={closeMenu} to="/timeline" className="py-2 text-white/80">
             Timeline
           </Link>
-          <Link onClick={closeMenu} to="/shared" className="py-2 text-white/80">
-            Shared
-          </Link>
+          {canAccessAnalyticsAndShared && (
+            <Link onClick={closeMenu} to="/shared" className="py-2 text-white/80">
+              Shared
+            </Link>
+          )}
           {(isHead || role === "radiologist") && (
             <Link onClick={closeMenu} to="/manage" className="py-2 text-white/80">
               {isHead ? "Manage" : "Patients"}

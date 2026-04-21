@@ -1,7 +1,6 @@
 import express from "express";
 import PatientAssignment from "../models/PatientAssignment.js";
-import Scan from "../models/Scan.js";
-import Users from "../models/Users.js";
+import Scan from "../models/scan.js";
 
 const router = express.Router();
 

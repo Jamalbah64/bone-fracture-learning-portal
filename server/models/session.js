@@ -25,7 +25,6 @@ const sessionSchema = new mongoose.Schema(
                 "patient",
                 "radiologist",
                 "head_radiologist",
-                "clinician",
                 "admin",
             ],
             required: true,

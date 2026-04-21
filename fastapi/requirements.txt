@@ -21,6 +21,11 @@ matplotlib
 seaborn
 tqdm
 dill
+requests
+psutil
+matplotlib
+scipy
+py-cpuinfo
 
 # To run the API:
 # pip install -r requirements.txt

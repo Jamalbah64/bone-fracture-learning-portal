@@ -1,7 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import SharedItem from "../models/SharedItem.js";
-import Scan from "../models/Scan.js";
+import Scan from "../models/scan.js";
 import Users from "../models/Users.js";
 import Notification from "../models/notification.js";
 

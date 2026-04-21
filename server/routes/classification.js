@@ -4,6 +4,9 @@ import fs from "fs";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
+import PatientAssignment from "../models/PatientAssignment.js";
+import Scan from "../models/scan.js";
+import Users from "../models/Users.js";
 import { validateMedicalImage } from "../utils/medicalImageValidator.js";
 
 const router = express.Router();
@@ -96,14 +99,73 @@ router.post("/", upload.single("file"), handleMulterErrors, async (req, res) => 
       return res.status(fastapiResponse.status).json({ error: fastapiData.detail || fastapiData.error || 'Prediction failed' });
     }
 
+    const patientUsername = String((req.body?.patientId || "")).trim();
+    let patientUser = null;
+    if (patientUsername) {
+      patientUser = await Users.findOne({ username: patientUsername, role: "patient" })
+        .select("_id")
+        .lean();
+    }
+
+    let assignmentCreated = false;
+    if (patientUser?._id && req.user?.userId) {
+      const existingAssignment = await PatientAssignment.findOne({
+        patientUser: patientUser._id,
+        radiologist: req.user.userId,
+      })
+        .select("_id")
+        .lean();
+
+      if (!existingAssignment) {
+        await PatientAssignment.create({
+          patientUser: patientUser._id,
+          radiologist: req.user.userId,
+          assignedBy: req.user.userId,
+        });
+        assignmentCreated = true;
+      }
+    }
+
+    const modelRuns = Array.isArray(fastapiData?.models)
+      ? fastapiData.models
+      : [
+        {
+          key: selectedModel || fastapiData?.model || "model_u",
+          label: selectedModel || fastapiData?.model || "model_u",
+          filename: req.file.originalname,
+          predictions: Array.isArray(fastapiData?.predictions) ? fastapiData.predictions : [],
+          num_labels:
+            typeof fastapiData?.num_labels === "number"
+              ? fastapiData.num_labels
+              : Array.isArray(fastapiData?.predictions)
+                ? fastapiData.predictions.length
+                : 0,
+        },
+      ];
+
+    const scan = await Scan.create({
+      patientUser: patientUser?._id || null,
+      patientId: patientUsername || "unassigned",
+      uploadedBy: req.user.userId,
+      filename: req.file.originalname,
+      imagePath: req.file.path,
+      models: modelRuns,
+    });
+
     // Return FastAPI payload plus original filename
-    return res.json({ ...fastapiData, filename: req.file.originalname });
+    return res.json({
+      ...fastapiData,
+      filename: req.file.originalname,
+      scanId: scan._id,
+      patientId: patientUsername || "unassigned",
+      patientLinked: Boolean(patientUser?._id),
+      assignmentCreated,
+    });
   } catch (err) {
     console.error('Classification route error when calling FastAPI:', err);
     return res.status(500).json({ error: 'Classification failed', details: err.message || String(err) });
   } finally {
-    // Always attempt to remove the temporary uploaded file
-    fs.unlink(req.file.path, (err) => { if (err) console.error('Failed to delete uploaded file after processing:', err); });
+    // File is retained at req.file.path for timeline/analytics image retrieval.
   }
 });
 

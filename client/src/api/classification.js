@@ -31,12 +31,14 @@ export async function classifyImage(filestem) {
  * @param {File} file - The image file to classify
  * @returns {Promise<Object>} Classification results
  */
-export async function classifyUploadedImage(file) {
-  //Get Auth token from MongoDB ATLAS
-  const token = localStorage.getItem("token"); 
+export async function classifyUploadedImage(file, patientId, model) {
+  const token = localStorage.getItem("token");
+
   // Create FormData to send the file
   const formData = new FormData();
   formData.append("file", file);
+  if (patientId) formData.append("patientId", String(patientId).trim());
+  if (model) formData.append("model", model);
 
   const response = await fetch("/api/classify/upload", {
     method: "POST",

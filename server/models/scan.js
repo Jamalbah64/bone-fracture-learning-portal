@@ -47,4 +47,4 @@ const scanSchema = new mongoose.Schema(
 scanSchema.index({ patientUser: 1, createdAt: 1 });
 scanSchema.index({ uploadedBy: 1, createdAt: 1 });
 
-export default mongoose.model("Scan", scanSchema);
+export default mongoose.models.Scan || mongoose.model("Scan", scanSchema);

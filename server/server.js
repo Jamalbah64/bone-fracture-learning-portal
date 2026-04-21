@@ -7,10 +7,10 @@ import mongoose from "mongoose";
 import authRoutes from "./auth/authRoutes.js";
 import authMiddleware from "./auth/middleware/auth.js";
 import requireRole from "./auth/middleware/requireRole.js";
-import classificationRoute from "./routes/classification.js";
-import scansRoute from "./routes/scans.js";
-import patientsRoute from "./routes/patients.js";
 import assignmentsRoute from "./routes/assignments.js";
+import classificationRoute from "./routes/classification.js";
+import patientsRoute from "./routes/patients.js";
+import scansRoute from "./routes/scans.js";
 import sharesRoute from "./routes/shares.js";
 
 const app = express();
@@ -18,7 +18,7 @@ const PORT = Number(process.env.PORT ?? 4000);
 
 app.use(
     cors({
-        origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
+        origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
         credentials: true,
     })
 );
@@ -42,7 +42,7 @@ app.use("/api/auth", authRoutes);
 app.use(
     "/api/classify/upload",
     authMiddleware,
-    requireRole("radiologist", "head_radiologist", "clinician"),
+    requireRole("radiologist", "head_radiologist"),
     classificationRoute
 );
 
@@ -55,11 +55,10 @@ app.use(
     assignmentsRoute
 );
 app.use("/api/shares", authMiddleware, sharesRoute);
-
 app.get(
     "/api/patient-portal",
     authMiddleware,
-    requireRole("patient", "clinician", "admin"),
+    requireRole("patient", "radiologist", "head_radiologist", "admin"),
     (req, res) => {
         res.json({ message: "Patient portal access granted", user: req.user });
     }
@@ -68,9 +67,9 @@ app.get(
 app.get(
     "/api/clinician",
     authMiddleware,
-    requireRole("clinician", "admin"),
+    requireRole("radiologist", "head_radiologist", "admin"),
     (req, res) => {
-        res.json({ message: "Clinician access granted", user: req.user });
+        res.json({ message: "Radiology access granted", user: req.user });
     }
 );
 

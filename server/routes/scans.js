@@ -1,6 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
-import Scan from "../models/Scan.js";
+import Scan from "../models/scan.js";
 import SharedItem from "../models/SharedItem.js";
 import Users from "../models/Users.js";
 import loadAccess from "../auth/middleware/accessControl.js";
