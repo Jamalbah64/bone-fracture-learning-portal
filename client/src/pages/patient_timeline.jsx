@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { fetchScans, scanImageUrl } from "../api/scans";
 import { fetchPatients } from "../api/patients";
 import ShareButton from "../components/ShareButton";
@@ -15,6 +15,10 @@ function PatientTimeline() {
   const [scanLoading, setScanLoading] = useState(false);
   const [activeImage, setActiveImage] = useState(null);
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setSelectedPatient(routePatient ? decodeURIComponent(routePatient) : null);
+  }, [routePatient]);
 
   useEffect(() => {
     setMounted(false);
@@ -63,7 +67,11 @@ function PatientTimeline() {
         }`}
       >
         <h1 className="text-3xl font-bold">Patient Timeline</h1>
-        <p className="text-white/60 mt-2">Click a scan to view full resolution image</p>
+        <p className="text-white/60 mt-2">
+          {routePatient
+            ? "Click a scan to view full resolution image."
+            : "Select a patient to open their timeline."}
+        </p>
       </div>
 
       <div className="px-6 lg:px-12 py-10">
@@ -72,25 +80,51 @@ function PatientTimeline() {
           <p className="text-white/60">Loading…</p>
         ) : (
           <>
-            {patients.length > 1 && (
-              <div className="mb-8 max-w-md">
-                <select
-                  value={selectedPatient || ""}
-                  onChange={(e) => setSelectedPatient(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
-                >
-                  <option value="" disabled className="bg-slate-900 text-white">Choose patient</option>
-                  {patients.map((p) => (
-                    <option key={p._id} value={p.username} className="bg-slate-900 text-white">{p.username}</option>
+            {!routePatient ? (
+              patients.length === 0 ? (
+                <p className="text-white/60">No patients available.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {patients.map((p, i) => (
+                    <Link
+                      key={p._id}
+                      to={`/patients/${encodeURIComponent(p.username)}`}
+                      className={`group bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300 ${
+                        mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+                      }`}
+                      style={{ transitionDelay: `${i * 60}ms` }}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-white/60 text-xs uppercase tracking-wide">
+                            Patient
+                          </p>
+                          <h2 className="text-lg font-semibold mt-1 group-hover:text-sky-300 transition">
+                            {p.username}
+                          </h2>
+                        </div>
+                        <span className="text-white/40 group-hover:text-white transition">→</span>
+                      </div>
+                      <div className="mt-5 flex items-center justify-between text-sm">
+                        <span className="text-white/60">Total Scans</span>
+                        <span className="text-white font-semibold">{p.scanCount}</span>
+                      </div>
+                    </Link>
                   ))}
-                </select>
-              </div>
-            )}
-
-            {scanLoading ? (
+                </div>
+              )
+            ) : scanLoading ? (
               <p className="text-white/60">Loading scans…</p>
             ) : selectedPatient && scans.length > 0 ? (
               <div className="overflow-x-auto pb-6">
+                <div className="mb-5">
+                  <Link
+                    to="/timeline"
+                    className="text-sm text-sky-300 hover:text-sky-200 transition"
+                  >
+                    ← Back to patients
+                  </Link>
+                </div>
                 <div className="flex gap-6 min-w-max">
                   {scans.map((scan, index) => {
                     const top = topPrediction(scan);
@@ -134,8 +168,6 @@ function PatientTimeline() {
               </div>
             ) : selectedPatient ? (
               <p className="text-white/60">No scans available for this patient.</p>
-            ) : patients.length === 0 ? (
-              <p className="text-white/60">No patients available.</p>
             ) : (
               <p className="text-white/60">Select a patient to view timeline.</p>
             )}
