@@ -13,7 +13,7 @@ import cv2
 
 # Set up paths and load YOLO model
 BASE_DIR = Path(__file__).parent
-FCE_REPO_DIR = BASE_DIR / "FCE-YOLOv8"
+FCE_REPO_DIR = BASE_DIR / "data"
 FCE_ULTRALYTICS_DIR = FCE_REPO_DIR / "ultralytics"
 
 # Add FCE-YOLOv8 to sys.path if it exists
@@ -24,7 +24,7 @@ if FCE_ULTRALYTICS_DIR.exists():
 from ultralytics import YOLO
 
 # Log setup for debugging and monitoring
-logger = logging.getLogger("mock_api")
+logger = logging.getLogger("fracture_api")
 logging.basicConfig(level=logging.INFO)
 
 # Initialize FastAPI app and set up upload directory

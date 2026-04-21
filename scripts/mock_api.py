@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from collections import Counter
 
 
-app = FastAPI(title="mock_api")
+app = FastAPI(title="fracture_api")
 df = pd.read_csv("./data/dataset.csv")
 
 app.add_middleware(
@@ -29,8 +29,9 @@ for entry in df["ao_classification"].fillna(""):
 
 class_counts = Counter(all_codes)
 max_class_count = max(class_counts.values()) if class_counts else 1
-avg_labels_per_image = np.mean(
-    label_counts_per_image) if label_counts_per_image else 1.0
+avg_labels_per_image = (
+    np.mean(label_counts_per_image) if label_counts_per_image else 1.0
+)
 
 
 def get_family(code: str) -> str:
@@ -131,6 +132,7 @@ def multiplicity():
     )
     return {"multiplicity": mult}
 
+
 # Metadata lookup
 
 
@@ -148,13 +150,13 @@ def image_metadata(filestem: str):
         row = df[df["patient_id"].astype(str).str.strip() == normalized_value]
 
     if row.empty:
-        raise HTTPException(
-            status_code=404, detail="Image or patient not found")
+        raise HTTPException(status_code=404, detail="Image or patient not found")
 
     record = row.iloc[0].replace([np.inf, -np.inf], np.nan)
     clean_data = record.astype(object).where(pd.notna(record), None).to_dict()
 
     return clean_data
+
 
 # Prediction endpoint
 
@@ -189,10 +191,7 @@ def predict(req: PredictRequest):
             patient_id = str(patient_id)
 
     predictions = [
-        {
-            "code": c,
-            "confidence": mock_confidence(c, len(codes), normalized_filestem)
-        }
+        {"code": c, "confidence": mock_confidence(c, len(codes), normalized_filestem)}
         for c in codes
     ]
 

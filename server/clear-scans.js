@@ -1,7 +1,7 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 
-const mongoUri = process.env.MONGO_URI?.trim();
+const mongoUri = process.env.MONGO_URI?.trim(); // Ensure MONGO_URI is provided and trimmed of whitespace
 if (!mongoUri) {
     console.error("Missing MONGO_URI in .env");
     process.exit(1);

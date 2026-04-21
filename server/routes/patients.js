@@ -1,7 +1,7 @@
 import express from "express";
-import Users from "../models/Users.js";
 import PatientAssignment from "../models/PatientAssignment.js";
 import Scan from "../models/Scan.js";
+import Users from "../models/Users.js";
 
 const router = express.Router();
 
@@ -49,18 +49,18 @@ router.get("/", async (req, res) => {
 
             const patients = patientIdsWithScans.length
                 ? await Users.find({
-                      _id: { $in: patientIdsWithScans },
-                      role: "patient",
-                  })
-                      .select("username role")
-                      .lean()
+                    _id: { $in: patientIdsWithScans },
+                    role: "patient",
+                })
+                    .select("username role")
+                    .lean()
                 : [];
 
             const counts = patients.length
                 ? await Scan.aggregate([
-                      { $match: { patientUser: { $in: patients.map((p) => p._id) } } },
-                      { $group: { _id: "$patientUser", count: { $sum: 1 } } },
-                  ])
+                    { $match: { patientUser: { $in: patients.map((p) => p._id) } } },
+                    { $group: { _id: "$patientUser", count: { $sum: 1 } } },
+                ])
                 : [];
             const countMap = Object.fromEntries(
                 counts.map((c) => [c._id.toString(), c.count])
@@ -95,18 +95,18 @@ router.get("/", async (req, res) => {
 
             const patients = allIds.length
                 ? await Users.find({
-                      _id: { $in: allIds },
-                      role: "patient",
-                  })
-                      .select("username role")
-                      .lean()
+                    _id: { $in: allIds },
+                    role: "patient",
+                })
+                    .select("username role")
+                    .lean()
                 : [];
 
             const counts = patients.length
                 ? await Scan.aggregate([
-                      { $match: { patientUser: { $in: patients.map((p) => p._id) } } },
-                      { $group: { _id: "$patientUser", count: { $sum: 1 } } },
-                  ])
+                    { $match: { patientUser: { $in: patients.map((p) => p._id) } } },
+                    { $group: { _id: "$patientUser", count: { $sum: 1 } } },
+                ])
                 : [];
             const countMap = Object.fromEntries(
                 counts.map((c) => [c._id.toString(), c.count])

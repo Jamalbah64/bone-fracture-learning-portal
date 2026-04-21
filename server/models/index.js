@@ -45,11 +45,7 @@ const LocalUser = { // Provides methods to find and create users in a local JSON
         return null;
     },
 
-<<<<<<< HEAD
     async create({ username, password, role, staffId }) { // Create a new user, checking for duplicates and hashing the password before storing
-=======
-    async create({ username, password, role }) { // Create a new user, checking for duplicates and hashing the password before storing
->>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
         const users = await readUsers();
         if (users.find(u => u.username === username)) {
             const err = new Error('Username already in use');

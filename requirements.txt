@@ -4,4 +4,4 @@ pandas
 numpy
 pydantic
 
-# pip install -r requirements.txt - this is to run the mock_api.py
+# pip install -r requirements.txt - this is to run the fracture_api.py

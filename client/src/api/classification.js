@@ -1,11 +1,11 @@
 export async function classifyImage(filestem) {
   const token = localStorage.getItem("token");
 
-  const response = await fetch("/api/classify/upload", {
+  const response = await fetch("/api/classify/upload", { // Send request to backend classification route with filestem in body
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}), // Include auth token if available for protected routes
     },
     body: JSON.stringify({ filestem }),
   });
@@ -32,8 +32,8 @@ export async function classifyImage(filestem) {
  * @returns {Promise<Object>} Classification results
  */
 export async function classifyUploadedImage(file) {
-  const token = localStorage.getItem("token");
-
+  //Get Auth token from MongoDB ATLAS
+  const token = localStorage.getItem("token"); 
   // Create FormData to send the file
   const formData = new FormData();
   formData.append("file", file);
