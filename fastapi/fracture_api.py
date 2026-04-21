@@ -240,8 +240,6 @@ def run_dual_inference(
 
     model = LOADED_MODELS[model_name]
 
-    # Replace this placeholder logic with the actual paired-projection inference path
-    # from the custom FCE-YOLOv8 model if model_u was trained to jointly consume both views.
     results_projection1 = model.predict(
         source=image_path_1,
         conf=0.05,
