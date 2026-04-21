@@ -4,7 +4,6 @@ import sys
 import shutil
 import logging
 from pathlib import Path
-from turtle import save
 from typing import List, Optional, Dict, Any
 
 # Import third-party libraries
@@ -29,8 +28,7 @@ sys.path = [str(FCE_REPO_DIR)] + [
     p for p in sys.path if Path(p).resolve() != FCE_REPO_DIR
 ]
 
-# PyTorch 2.6+ defaults torch.load(..., weights_only=True), which can block
-# loading older YOLO checkpoints. Force legacy behavior for trusted local weights.
+# Force legacy behavior for trusted local weights.
 os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
 
 # Add ultralytics from FCE-YOLOv8 to sys.pat
@@ -476,7 +474,6 @@ async def predict_all_projections(
 
     save_path1 = UPLOAD_DIR / f"projection1_{filename1}"
     save_path2 = UPLOAD_DIR / f"projection2_{filename2}"
-    save_path3 = UPLOAD_DIR / f"combined_{filename1}_{filename2}"
 
     try:
         with save_path1.open("wb") as buffer:
@@ -526,10 +523,5 @@ async def predict_all_projections(
         try:
             if save_path2.exists():
                 save_path2.unlink()
-        except Exception:
-            pass
-
-            if save_path3.exists():
-                save_path3.unlink()
         except Exception:
             pass
