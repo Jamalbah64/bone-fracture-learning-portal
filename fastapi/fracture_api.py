@@ -3,6 +3,7 @@ import sys
 import shutil
 import logging
 from pathlib import Path
+from turtle import save
 from typing import List, Optional, Dict, Any
 
 # Import third-party libraries
@@ -470,6 +471,7 @@ async def predict_all_projections(
 
     save_path1 = UPLOAD_DIR / f"projection1_{filename1}"
     save_path2 = UPLOAD_DIR / f"projection2_{filename2}"
+    save_path3 = UPLOAD_DIR / f"combined_{filename1}_{filename2}"
 
     try:
         with save_path1.open("wb") as buffer:
@@ -510,7 +512,7 @@ async def predict_all_projections(
         logger.exception("Dual projection inference failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
-        try:
+        try:  # Clear uploaded files to save space and prevent clutter
             if save_path1.exists():
                 save_path1.unlink()
         except Exception:
@@ -519,5 +521,10 @@ async def predict_all_projections(
         try:
             if save_path2.exists():
                 save_path2.unlink()
+        except Exception:
+            pass
+
+            if save_path3.exists():
+                save_path3.unlink()
         except Exception:
             pass
