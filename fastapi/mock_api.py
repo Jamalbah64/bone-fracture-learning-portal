@@ -1,4 +1,5 @@
 # Import standard libraries
+import os
 import sys
 import shutil
 import logging
@@ -19,6 +20,10 @@ FCE_ULTRALYTICS_DIR = FCE_REPO_DIR / "ultralytics"
 # Add FCE-YOLOv8 to sys.path if it exists
 if FCE_ULTRALYTICS_DIR.exists():
     sys.path.insert(0, str(FCE_REPO_DIR))
+
+# PyTorch 2.6+ defaults torch.load(..., weights_only=True), which can block
+# loading older YOLO checkpoints. Force legacy behavior for trusted local weights.
+os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
 
 # Add ultralytics from FCE-YOLOv8 to sys.pat
 from ultralytics import YOLO

@@ -5,7 +5,8 @@ Pillow
 streamlit
 matplotlib
 opencv-python-headless
-nvidia-pyindex
+# nvidia-pyindex can fail on some Python/Windows setups and is not required
+# for CPU/local inference in this project.
 matplotlib>=3.3.0
 numpy>=1.22.2
 opencv-python>=4.6.0

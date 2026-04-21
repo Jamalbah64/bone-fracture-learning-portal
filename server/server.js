@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 import cookieParser from "cookie-parser";
-=======
->>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 import cors from "cors";
 import "dotenv/config";
 import express from "express";
@@ -19,12 +16,11 @@ import sharesRoute from "./routes/shares.js";
 const app = express();
 const PORT = Number(process.env.PORT ?? 4000);
 
-<<<<<<< HEAD
 app.use(
-    cors({
-        origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
-        credentials: true,
-    })
+  cors({
+    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+    credentials: true,
+  })
 );
 
 app.use(cookieParser());
@@ -46,7 +42,7 @@ app.use("/api/auth", authRoutes);
 app.use(
     "/api/classify/upload",
     authMiddleware,
-    requireRole("radiologist", "head_radiologist", "clinician"),
+    requireRole("radiologist", "head_radiologist"),
     classificationRoute
 );
 
@@ -59,84 +55,56 @@ app.use(
     assignmentsRoute
 );
 app.use("/api/shares", authMiddleware, sharesRoute);
-
-=======
-console.log(process.env.MONGO_URI); // Debug log to verify MONGO_URI is loaded
-
-app.use(cors());
-app.use(express.json({ limit: "25mb" }));
-
-// Public auth routes
-app.use("/api/auth", authRoutes);
-
-// Role-protected classify route
-app.use(
-    "/api/classify",
-    authMiddleware,
-    requireRole("clinician", "admin"),
-    classificationRoute
+app.get(
+  "/api/patient-portal",
+  authMiddleware,
+  requireRole("patient", "radiologist", "head_radiologist", "admin"),
+  (req, res) => {
+    res.json({ message: "Patient portal access granted", user: req.user });
+  }
 );
 
-// Patient-access route
->>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 app.get(
-    "/api/patient-portal",
-    authMiddleware,
-    requireRole("patient", "clinician", "admin"),
-    (req, res) => {
-        res.json({ message: "Patient portal access granted", user: req.user });
-    }
+  "/api/clinician",
+  authMiddleware,
+  requireRole("radiologist", "head_radiologist", "admin"),
+  (req, res) => {
+    res.json({ message: "Radiology access granted", user: req.user });
+  }
 );
 
-<<<<<<< HEAD
-=======
-// Clinician route
->>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 app.get(
-    "/api/clinician",
-    authMiddleware,
-    requireRole("clinician", "admin"),
-    (req, res) => {
-        res.json({ message: "Clinician access granted", user: req.user });
-    }
-);
-
-<<<<<<< HEAD
-=======
-// admin route
->>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
-app.get(
-    "/api/admin",
-    authMiddleware,
-    requireRole("admin"),
-    (req, res) => {
-        res.json({ message: "Admin access granted", user: req.user });
-    }
+  "/api/admin",
+  authMiddleware,
+  requireRole("admin"),
+  (req, res) => {
+    res.json({ message: "Admin access granted", user: req.user });
+  }
 );
 
 app.get("/health", (req, res) => {
-    res.json({ status: "OK", message: "Server running" });
+  res.json({ status: "OK", message: "Server running" });
 });
 
 async function start() {
-    const mongoUri = process.env.MONGO_URI?.trim();
+  const mongoUri = process.env.MONGO_URI?.trim();
 
-    if (!mongoUri) {
-        console.error("Missing MONGO_URI");
-        process.exit(1);
-    }
+  if (!mongoUri) {
+    console.error("Missing MONGO_URI");
+    process.exit(1);
+  }
 
-    try {
-        await mongoose.connect(mongoUri);
-        console.log("Connected to MongoDB");
+  try {
+    await mongoose.connect(mongoUri);
+    console.log("Connected to MongoDB");
 
-        app.listen(PORT, () => {
-            console.log(`Server listening on port ${PORT}`);
-        });
-    } catch (err) {
-        console.error("MongoDB connection error:", err);
-        process.exit(1);
-    }
+    app.listen(PORT, () => {
+      console.log(`Server listening on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error("MongoDB connection error:", err);
+    process.exit(1);
+  }
 }
 
 start();

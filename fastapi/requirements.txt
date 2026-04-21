@@ -8,6 +8,11 @@ pillow
 opencv-python-headless
 timm
 dill
+requests
+psutil
+matplotlib
+scipy
+py-cpuinfo
 
 # To run the API:
 # pip install -r requirements.txt

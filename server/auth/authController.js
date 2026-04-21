@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import User from "../models/index.js";
-import Scan from "../models/Scan.js";
+import Scan from "../models/scan.js";
 import PatientAssignment from "../models/PatientAssignment.js";
 import { AUTH_COOKIE_NAME, getCookieOptions } from "./cookies.js";
 import {
@@ -58,7 +58,7 @@ function getTokenExpiryDate(hours = 2) {
     return expiresAt;
 }
 
-const ALLOWED_ROLES = ["patient", "clinician", "radiologist", "head_radiologist"];
+const ALLOWED_ROLES = ["patient", "radiologist", "head_radiologist"];
 const STAFF_ROLES = ["radiologist", "head_radiologist"];
 
 function normalizeRole(role) {
@@ -70,7 +70,6 @@ function normalizeStaffId(staffId) {
     return String(staffId ?? "").trim();
 }
 
-<<<<<<< HEAD
 export async function register(req, res) {
     try {
         const { username, password, role, staffId } = req.body;
@@ -91,11 +90,6 @@ export async function register(req, res) {
                 return res.status(400).json({ error: "Staff ID already in use" });
             }
         }
-=======
-export async function register(req, res) { // Endpoint for user registration
-    try { // Extract username, password, and role from the request body
-        const { username, password, role } = req.body;
->>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 
         const existing = await User.findOne({ username });
         if (existing) {
@@ -143,7 +137,6 @@ export async function login(req, res) { // Endpoint for user login
             { expiresIn: "2h" }
         );
 
-<<<<<<< HEAD
         await createSession({
             userId: user._id,
             jti,
@@ -157,10 +150,7 @@ export async function login(req, res) { // Endpoint for user login
         res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions());
 
         return res.json({
-=======
-        return res.json({
             token,
->>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
             message: "Login successful",
             user: {
                 id: user._id,

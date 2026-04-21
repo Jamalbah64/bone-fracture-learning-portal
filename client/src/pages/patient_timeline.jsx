@@ -75,7 +75,9 @@ function PatientTimeline() {
       >
         <h1 className="text-3xl font-bold">Patient Timeline</h1>
         <p className="text-white/60 mt-2">
-          Click a scan to view full resolution image
+          {routePatient
+            ? "Click a scan to view full resolution image."
+            : "Select a patient to open their timeline."}
         </p>
       </div>
 
@@ -85,24 +87,36 @@ function PatientTimeline() {
           <p className="text-white/60">Loading…</p>
         ) : (
           <>
-            {patients.length > 1 && (
-              <div className="mb-8 max-w-md">
-                <select
-                  value={selectedPatient || ""}
-                  onChange={(e) => setSelectedPatient(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
-                >
-                  <option value="" disabled className="bg-slate-900 text-white">
-                    Choose patient
-                  </option>
-                  {patients.map((p) => (
-                    <option
+            {!routePatient ? (
+              patients.length === 0 ? (
+                <p className="text-white/60">No patients available.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {patients.map((p, i) => (
+                    <Link
                       key={p._id}
-                      value={p.username}
-                      className="bg-slate-900 text-white"
+                      to={`/patients/${encodeURIComponent(p.username)}`}
+                      className={`group bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300 ${
+                        mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+                      }`}
+                      style={{ transitionDelay: `${i * 60}ms` }}
                     >
-                      {p.username}
-                    </option>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-white/60 text-xs uppercase tracking-wide">
+                            Patient
+                          </p>
+                          <h2 className="text-lg font-semibold mt-1 group-hover:text-sky-300 transition">
+                            {p.username}
+                          </h2>
+                        </div>
+                        <span className="text-white/40 group-hover:text-white transition">→</span>
+                      </div>
+                      <div className="mt-5 flex items-center justify-between text-sm">
+                        <span className="text-white/60">Total Scans</span>
+                        <span className="text-white font-semibold">{p.scanCount}</span>
+                      </div>
+                    </Link>
                   ))}
                 </div>
               )
@@ -176,8 +190,6 @@ function PatientTimeline() {
               <p className="text-white/60">
                 No scans available for this patient.
               </p>
-            ) : patients.length === 0 ? (
-              <p className="text-white/60">No patients available.</p>
             ) : (
               <p className="text-white/60">
                 Select a patient to view timeline.
