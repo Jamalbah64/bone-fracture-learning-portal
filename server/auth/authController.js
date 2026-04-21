@@ -70,6 +70,7 @@ function normalizeStaffId(staffId) {
     return String(staffId ?? "").trim();
 }
 
+<<<<<<< HEAD
 export async function register(req, res) {
     try {
         const { username, password, role, staffId } = req.body;
@@ -90,6 +91,11 @@ export async function register(req, res) {
                 return res.status(400).json({ error: "Staff ID already in use" });
             }
         }
+=======
+export async function register(req, res) { // Endpoint for user registration
+    try { // Extract username, password, and role from the request body
+        const { username, password, role } = req.body;
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 
         const existing = await User.findOne({ username });
         if (existing) {
@@ -110,7 +116,7 @@ export async function register(req, res) {
     }
 }
 
-export async function login(req, res) {
+export async function login(req, res) { // Endpoint for user login
     try {
         const { username, password, staffId } = req.body;
         const normalizedStaffId = normalizeStaffId(staffId);
@@ -137,6 +143,7 @@ export async function login(req, res) {
             { expiresIn: "2h" }
         );
 
+<<<<<<< HEAD
         await createSession({
             userId: user._id,
             jti,
@@ -150,6 +157,10 @@ export async function login(req, res) {
         res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions());
 
         return res.json({
+=======
+        return res.json({
+            token,
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
             message: "Login successful",
             user: {
                 id: user._id,

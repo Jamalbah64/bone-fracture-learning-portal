@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pandas
+numpy
+pydantic
+
+# pip install -r requirements.txt - this is to run the mock_api.py

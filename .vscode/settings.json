@@ -1,5 +1,9 @@
 {
     "postman.settings.dotenv-detection-notification-visibility": false,
+<<<<<<< HEAD
     "python-envs.defaultEnvManager": "ms-python.python:system",
     "git.ignoreLimitWarning": true
+=======
+    "python-envs.defaultEnvManager": "ms-python.python:system"
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 }

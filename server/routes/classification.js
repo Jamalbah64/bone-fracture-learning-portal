@@ -1,10 +1,13 @@
 import "dotenv/config";
 import express from "express";
+<<<<<<< HEAD
 import fs from "fs";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import { validateMedicalImage } from "../utils/medicalImageValidator.js";
+=======
+>>>>>>> cfd71478b51c4686f71dbb91118365a21552ab44
 
 const router = express.Router();
 const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000";
@@ -50,60 +53,60 @@ const handleMulterErrors = (err, req, res, next) => {
 
 // Route to handle file upload and classification
 router.post("/", upload.single("file"), handleMulterErrors, async (req, res) => {
+  // Main classification route
+  // Accepts an uploaded image, validates it, forwards to FastAPI predict endpoint,
+  // and returns the prediction payload. Optional `model` can be provided either
+  // as a multipart form field or as a query parameter and will be forwarded.
+
+  // Ensure a file was uploaded
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  // Validate that this looks like a supported medical image
+  const validation = validateMedicalImage(req.file);
+  if (!validation.valid) {
+    fs.unlink(req.file.path, (err) => { if (err) console.error("Failed to delete invalid file:", err); });
+    return res.status(400).json({ error: validation.reason });
+  }
+
+  // Determine if a specific model was requested (form field or query)
+  const selectedModel = (req.body && req.body.model) || req.query.model || undefined;
+  const modelQuery = selectedModel ? `?model=${encodeURIComponent(selectedModel)}` : "";
+  const url = `${FASTAPI_URL}/predict-upload${modelQuery}`;
+
+  // Prepare form data to forward the file to FastAPI
+  const fileBuffer = fs.readFileSync(req.file.path);
+  const formData = new FormData();
+  const blob = new Blob([fileBuffer], { type: req.file.mimetype || 'application/octet-stream' });
+  formData.append('image', blob, req.file.originalname);
+
+  let fastapiResponse;
+  let fastapiData = null;
   try {
-    // Validate that a file was uploaded
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+    fastapiResponse = await fetch(url, { method: 'POST', body: formData });
+
+    const contentType = fastapiResponse.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      fastapiData = await fastapiResponse.json();
+    } else {
+      const raw = await fastapiResponse.text();
+      console.error('FastAPI returned non-JSON response:', raw.slice(0, 1000));
+      return res.status(502).json({ error: 'FastAPI returned non-JSON response', details: raw.slice(0, 1000) });
     }
 
-    // Validate that it's a medical image
-    const validation = validateMedicalImage(req.file);
-    if (!validation.valid) {
-      // Clean up the uploaded file
-      fs.unlink(req.file.path, (err) => {
-        if (err) console.error("Failed to delete invalid file:", err);
-      });
-      return res.status(400).json({ error: validation.reason });
+    if (!fastapiResponse.ok) {
+      return res.status(fastapiResponse.status).json({ error: fastapiData.detail || fastapiData.error || 'Prediction failed' });
     }
 
-    // Read the file and send it to FastAPI
-    const fileBuffer = fs.readFileSync(req.file.path);
-
-    // Create FormData with the file using native Node.js FormData
-    const formData = new FormData();
-    const blob = new Blob([fileBuffer], { type: req.file.mimetype || 'application/octet-stream' });
-    formData.append('image', blob, req.file.originalname);
-
-    // Call FastAPI for prediction with the actual image file
-    const response = await fetch(`${FASTAPI_URL}/predict-upload`, {
-      method: "POST",
-      body: formData,
-    });
-
-    const contentType = response.headers.get("content-type") || "";
-    const data = await response.json();
-
-    console.log("FastAPI Response Status:", response.status);
-    console.log("FastAPI Response Data:", data);
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: data.detail || data.error || "Prediction failed",
-      });
-    }
-
-    // Return the results with original filename
-    return res.json({
-      ...data,
-      filename: req.file.originalname,
-      savedPath: req.file.path,
-    });
+    // Return FastAPI payload plus original filename
+    return res.json({ ...fastapiData, filename: req.file.originalname });
   } catch (err) {
-    console.error("Classification route error:", err);
-    return res.status(500).json({
-      error: "Classification failed",
-      details: err.message || String(err),
-    });
+    console.error('Classification route error when calling FastAPI:', err);
+    return res.status(500).json({ error: 'Classification failed', details: err.message || String(err) });
+  } finally {
+    // Always attempt to remove the temporary uploaded file
+    fs.unlink(req.file.path, (err) => { if (err) console.error('Failed to delete uploaded file after processing:', err); });
   }
 });
 
