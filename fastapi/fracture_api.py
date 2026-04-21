@@ -382,7 +382,7 @@ async def predict_with_visualization(
         results = model_instance.predict(
             str(save_path),
             conf=0.05,
-            iou=0.45,
+            iou=0.45,  # Set IOU threshold to help measure the overlap between predicted bounding boxes and ground truth boxes
             imgsz=640,
             verbose=False,
             device="cpu",
