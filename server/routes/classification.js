@@ -22,10 +22,12 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({ // Save files to the uploads directory with a unique name
+const storage = multer.diskStorage({
+  // Save files to the uploads directory with a unique name
   destination: (req, file, cb) => {
     cb(null, uploadDir);
   },
+
   filename: (req, file, cb) => {
     const timestamp = Date.now();
     const ext = path.extname(file.originalname);
@@ -34,7 +36,8 @@ const storage = multer.diskStorage({ // Save files to the uploads directory with
   },
 });
 
-const upload = multer({ // Configure multer with storage and file size limit
+const upload = multer({
+  // Configure multer with storage and file size limit
   storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
 });
@@ -44,172 +47,187 @@ const handleMulterErrors = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     console.error("Multer error:", err.message);
     return res.status(400).json({ error: `File upload error: ${err.message}` });
-  } else if (err) {
-    console.error("Unexpected error:", err.message);
+  }
+
+  if (err) {
+    console.error("Unexpected upload error:", err.message);
     return res.status(400).json({ error: `Upload error: ${err.message}` });
   }
+
   next();
 };
 
-// Route to handle file upload and classification
-router.post("/", upload.single("file"), handleMulterErrors, async (req, res) => {
-  // Main classification route
-  // Accepts an uploaded image, validates it, forwards to FastAPI predict endpoint,
-  // and returns the prediction payload. Optional `model` can be provided either
-  // as a multipart form field or as a query parameter and will be forwarded.
+function buildModelRunsFromFastApi(fastapiData) {
+  const results = fastapiData?.results || {};
 
-  // Ensure a file was uploaded
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+  return ["model_a", "model_b", "model_u"].map((modelKey) => {
+    const predictions = Array.isArray(results[modelKey])
+      ? results[modelKey]
+      : [];
 
-  // Validate that this looks like a supported medical image
-  const validation = validateMedicalImage(req.file);
-  if (!validation.valid) {
-    fs.unlink(req.file.path, (err) => { if (err) console.error("Failed to delete invalid file:", err); });
-    return res.status(400).json({ error: validation.reason });
-  }
+    return {
+      key: modelKey,
+      label: modelKey,
+      filename:
+        modelKey === "model_b"
+          ? fastapiData?.projection2_filename
+          : fastapiData?.projection1_filename,
+      predictions,
+      num_labels: predictions.length,
+    };
+  });
+}
 
-  // Determine if a specific model was requested (form field or query)
-  const selectedModel = (req.body && req.body.model) || req.query.model || undefined;
-  const modelQuery = selectedModel ? `?model=${encodeURIComponent(selectedModel)}` : "";
-  const url = `${FASTAPI_URL}/predict-upload${modelQuery}`;
+// Main upload route
+// Accepts one or two images and sends them to the api for classification
+router.post(
+  "/",
+  upload.fields([
+    { name: "projection1", maxCount: 1 },
+    { name: "projection2", maxCount: 1 },
+  ]),
+  handleMulterErrors,
+  async (req, res) => {
+    const projection1 = req.files?.projection1?.[0] || null;
+    const projection2 = req.files?.projection2?.[0] || null;
 
-  // Prepare form data to forward the file to FastAPI
-  const fileBuffer = fs.readFileSync(req.file.path);
-  const formData = new FormData();
-  const blob = new Blob([fileBuffer], { type: req.file.mimetype || 'application/octet-stream' });
-  formData.append('image', blob, req.file.originalname);
-
-  let fastapiResponse;
-  let fastapiData = null;
-  try {
-    fastapiResponse = await fetch(url, { method: 'POST', body: formData });
-
-    const contentType = fastapiResponse.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      fastapiData = await fastapiResponse.json();
-    } else {
-      const raw = await fastapiResponse.text();
-      console.error('FastAPI returned non-JSON response:', raw.slice(0, 1000));
-      return res.status(502).json({ error: 'FastAPI returned non-JSON response', details: raw.slice(0, 1000) });
+    if (!projection1) {
+      return res.status(400).json({
+        error: "Please upload at least one image for Projection 1.",
+      });
     }
 
-    if (!fastapiResponse.ok) {
-      return res.status(fastapiResponse.status).json({ error: fastapiData.detail || fastapiData.error || 'Prediction failed' });
+    const projection1Validation = validateMedicalImage(projection1);
+
+    if (!projection1Validation.valid) {
+      fs.unlink(projection1.path, () => { });
+      return res.status(400).json({ error: projection1Validation.reason });
     }
 
-    const patientUsername = String((req.body?.patientId || "")).trim();
-    let patientUser = null;
-    if (patientUsername) {
-      patientUser = await Users.findOne({ username: patientUsername, role: "patient" })
-        .select("_id")
-        .lean();
-    }
+    if (projection2) {
+      const projection2Validation = validateMedicalImage(projection2);
 
-    let assignmentCreated = false;
-    if (patientUser?._id && req.user?.userId) {
-      const existingAssignment = await PatientAssignment.findOne({
-        patientUser: patientUser._id,
-        radiologist: req.user.userId,
-      })
-        .select("_id")
-        .lean();
-
-      if (!existingAssignment) {
-        await PatientAssignment.create({
-          patientUser: patientUser._id,
-          radiologist: req.user.userId,
-          assignedBy: req.user.userId,
-        });
-        assignmentCreated = true;
+      if (!projection2Validation.valid) {
+        fs.unlink(projection1.path, () => { });
+        fs.unlink(projection2.path, () => { });
+        return res.status(400).json({ error: projection2Validation.reason });
       }
     }
 
-    const modelRuns = Array.isArray(fastapiData?.models)
-      ? fastapiData.models
-      : [
+    const patientUsername = String(req.body?.patientId || "").trim();
+
+    try {
+      const formData = new FormData();
+
+      const projection1Buffer = fs.readFileSync(projection1.path);
+      const projection1Blob = new Blob([projection1Buffer], {
+        type: projection1.mimetype || "application/octet-stream",
+      });
+
+      formData.append("projection1", projection1Blob, projection1.originalname);
+
+      if (projection2) {
+        const projection2Buffer = fs.readFileSync(projection2.path);
+        const projection2Blob = new Blob([projection2Buffer], {
+          type: projection2.mimetype || "application/octet-stream",
+        });
+
+        formData.append("projection2", projection2Blob, projection2.originalname);
+      }
+
+      const fastapiResponse = await fetch(
+        `${FASTAPI_URL}/predict-with-visualization`,
         {
-          key: selectedModel || fastapiData?.model || "model_u",
-          label: selectedModel || fastapiData?.model || "model_u",
-          filename: req.file.originalname,
-          predictions: Array.isArray(fastapiData?.predictions) ? fastapiData.predictions : [],
-          num_labels:
-            typeof fastapiData?.num_labels === "number"
-              ? fastapiData.num_labels
-              : Array.isArray(fastapiData?.predictions)
-                ? fastapiData.predictions.length
-                : 0,
-        },
-      ];
+          method: "POST",
+          body: formData,
+        }
+      );
 
-    const scan = await Scan.create({
-      patientUser: patientUser?._id || null,
-      patientId: patientUsername || "unassigned",
-      uploadedBy: req.user.userId,
-      filename: req.file.originalname,
-      imagePath: req.file.path,
-      models: modelRuns,
-    });
+      const contentType = fastapiResponse.headers.get("content-type") || "";
 
-    // Return FastAPI payload plus original filename
-    return res.json({
-      ...fastapiData,
-      filename: req.file.originalname,
-      scanId: scan._id,
-      patientId: patientUsername || "unassigned",
-      patientLinked: Boolean(patientUser?._id),
-      assignmentCreated,
-    });
-  } catch (err) {
-    console.error('Classification route error when calling FastAPI:', err);
-    return res.status(500).json({ error: 'Classification failed', details: err.message || String(err) });
-  } finally {
-    // File is retained at req.file.path for timeline/analytics image retrieval.
-  }
-});
+      if (!contentType.includes("application/json")) {
+        const raw = await fastapiResponse.text();
 
-// Legacy route for filestem-based classification (kept for backward compatibility)
-router.post("/legacy", async (req, res) => {
-  try {
-    const { filestem } = req.body;
+        console.error("FastAPI returned non-JSON response:", raw.slice(0, 1000));
 
-    if (!filestem || typeof filestem !== "string") {
-      return res.status(400).json({ error: "Missing or invalid filestem" });
-    }
+        return res.status(502).json({
+          error: "FastAPI returned non-JSON response",
+          details: raw.slice(0, 1000),
+        });
+      }
 
-    const response = await fetch(`${FASTAPI_URL}/predict`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filestem: filestem.trim() }),
-    });
+      const fastapiData = await fastapiResponse.json();
 
-    const contentType = response.headers.get("content-type") || "";
+      if (!fastapiResponse.ok) {
+        return res.status(fastapiResponse.status).json({
+          error:
+            fastapiData.detail ||
+            fastapiData.error ||
+            "Prediction failed in FastAPI.",
+        });
+      }
 
-    if (!contentType.includes("application/json")) {
-      const raw = await response.text();
-      return res.status(502).json({
-        error: "FastAPI returned non-JSON content",
-        details: raw.slice(0, 300),
+      let patientUser = null;
+
+      if (patientUsername) {
+        patientUser = await Users.findOne({
+          username: patientUsername,
+          role: "patient",
+        })
+          .select("_id")
+          .lean();
+      }
+
+      let assignmentCreated = false;
+
+      if (patientUser?._id && req.user?.userId) {
+        const existingAssignment = await PatientAssignment.findOne({
+          patientUser: patientUser._id,
+          radiologist: req.user.userId,
+        })
+          .select("_id")
+          .lean();
+
+        if (!existingAssignment) {
+          await PatientAssignment.create({
+            patientUser: patientUser._id,
+            radiologist: req.user.userId,
+            assignedBy: req.user.userId,
+          });
+
+          assignmentCreated = true;
+        }
+      }
+
+      const modelRuns = buildModelRunsFromFastApi(fastapiData);
+
+      const scan = await Scan.create({
+        patientUser: patientUser?._id || null,
+        patientId: patientUsername || "unassigned",
+        uploadedBy: req.user.userId,
+        filename: projection1.originalname,
+        imagePath: projection1.path,
+        projection2Filename: projection2?.originalname || null,
+        projection2ImagePath: projection2?.path || null,
+        models: modelRuns,
+      });
+
+      return res.json({
+        ...fastapiData,
+        scanId: scan._id,
+        patientId: patientUsername || "unassigned",
+        patientLinked: Boolean(patientUser?._id),
+        assignmentCreated,
+      });
+    } catch (err) {
+      console.error("Classification route error:", err);
+
+      return res.status(500).json({
+        error: "Classification failed",
+        details: err.message || String(err),
       });
     }
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: data.detail || data.error || "Prediction failed",
-      });
-    }
-
-    return res.json(data);
-  } catch (err) {
-    console.error("Classification route error:", err);
-    return res.status(500).json({
-      error: "Classification failed",
-      details: err.message || String(err),
-    });
   }
-});
+);
 
 export default router;

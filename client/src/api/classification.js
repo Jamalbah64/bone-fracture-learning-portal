@@ -1,44 +1,33 @@
-export async function classifyImage(filestem) {
-  const token = localStorage.getItem("token");
-
-  const response = await fetch("/api/classify/upload", { // Send request to backend classification route with filestem in body
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}), // Include auth token if available for protected routes
-    },
-    body: JSON.stringify({ filestem }),
-  });
-
-  const contentType = response.headers.get("content-type") || "";
-
-  if (!contentType.includes("application/json")) {
-    const raw = await response.text();
-    throw new Error(`Non-JSON response from /api/classify/upload: ${raw.slice(0, 200)}`);
-  }
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || "Classification failed");
-  }
-
-  return data;
-}
-
 /**
- * Uploads a medical image file for classification
- * @param {File} file - The image file to classify
- * @returns {Promise<Object>} Classification results
+ * Uploads one or two medical images for classification.
+ *
+ * projection1 = required.
+ * projection2 = optional.
+ *
+ * The backend forwards these to FastAPI for predictions
  */
-export async function classifyUploadedImage(file, patientId, model) {
+export async function classifyImages({
+  projection1,
+  projection2 = null,
+  patientId = "",
+}) {
   const token = localStorage.getItem("token");
 
-  // Create FormData to send the file
+  if (!projection1) {
+    throw new Error("Projection 1 image is required.");
+  }
+
   const formData = new FormData();
-  formData.append("file", file);
-  if (patientId) formData.append("patientId", String(patientId).trim());
-  if (model) formData.append("model", model);
+
+  formData.append("projection1", projection1);
+
+  if (projection2) {
+    formData.append("projection2", projection2);
+  }
+
+  if (patientId) {
+    formData.append("patientId", String(patientId).trim());
+  }
 
   const response = await fetch("/api/classify/upload", {
     method: "POST",
@@ -46,20 +35,28 @@ export async function classifyUploadedImage(file, patientId, model) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: formData,
-    credentials: "include", // Include cookies if sent
+    credentials: "include",
   });
 
   const contentType = response.headers.get("content-type") || "";
 
   if (!contentType.includes("application/json")) {
     const raw = await response.text();
-    throw new Error(`Non-JSON response from /api/classify/upload: ${raw.slice(0, 200)}`);
+
+    throw new Error(
+      `Non-JSON response from /api/classify: ${raw.slice(0, 200)}`
+    );
   }
 
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || "Image upload or classification failed");
+    throw new Error(
+      data.error ||
+      data.detail ||
+      data.details ||
+      "Image upload or classification failed."
+    );
   }
 
   return data;
