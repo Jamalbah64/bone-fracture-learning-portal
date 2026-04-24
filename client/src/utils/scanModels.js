@@ -91,18 +91,10 @@ export function splitApiResultIntoModels(apiResult) {
     );
   }
 
-  // Handle case where API returns models as an object with keys
-  // Returns an array of normalized model results
   if (apiResult.models && typeof apiResult.models === "object") {
     return Object.entries(apiResult.models).map(([modelKey, value]) =>
       normalizeModelResult(modelKey, value, apiResult.filename)
     );
   }
-  return [
-    normalizeModelResult(
-      apiResult.model || "model_u",
-      apiResult,
-      apiResult.filename || apiResult.projection1_filename
-    ),
-  ];
+  return [];
 }
