@@ -78,9 +78,9 @@ ALLOWED_CONTENT_TYPES = {
 DATA_DIR = BASE_DIR / "data"
 
 MODEL_DIRS = {
-    "model_u": DATA_DIR / "Model_U",
     "model_a": DATA_DIR / "Model_A",
     "model_b": DATA_DIR / "Model_B",
+    "model_u": DATA_DIR / "Model_U",
 }
 
 FRACTURE_CLASSES = {
@@ -125,28 +125,34 @@ def _load_model(weight_path: str, model_name: str) -> None:
 def load_models() -> None:
     for model_name, model_dir in MODEL_DIRS.items():
         try:
-            # Check if the model directory exists and contains subdirectories
-            if model_dir.exists() and any(p.is_dir() for p in model_dir.iterdir()):
-                for sub_dir in sorted([p for p in model_dir.iterdir() if p.is_dir()]):
-                    sub_model_name = f"{model_name}_{sub_dir.name.lower()}"
-                    weight_path = _find_weight_file(sub_dir)
+            loaded_any = False
 
-                    if not weight_path:
+            # Try direct weights in the model directory first
+            weight_path = _find_weight_file(model_dir)
+            if weight_path:
+                _load_model(weight_path, model_name)
+                loaded_any = True
+
+            # Try subdirectories next
+            if model_dir.exists():
+                for sub_dir in sorted([p for p in model_dir.iterdir() if p.is_dir()]):
+                    sub_weight_path = _find_weight_file(sub_dir)
+                    if not sub_weight_path:
                         logger.info(
-                            "No weight file found for %s in %s", sub_model_name, sub_dir
+                            "No weight file found for %s in %s", model_name, sub_dir
                         )
                         continue
 
-                    _load_model(weight_path, sub_model_name)
-                continue
+                    # Keep one name for the main model while adding suffixes for subdirectories
+                    if not loaded_any:
+                        _load_model(sub_weight_path, model_name)
+                        loaded_any = True
+                    else:
+                        sub_model_name = f"{model_name}_{sub_dir.name.lower()}"
+                        _load_model(sub_weight_path, sub_model_name)
 
-            weight_path = _find_weight_file(model_dir)
-
-            if not weight_path:
+            if not loaded_any:
                 logger.info("No weight file found for %s in %s", model_name, model_dir)
-                continue
-
-            _load_model(weight_path, model_name)
 
         except Exception as e:
             logger.warning("Failed to load %s: %s", model_name, e)
@@ -224,7 +230,7 @@ def run_inference(image_path: str, model_name: str = "model_u") -> List[Dict[str
     model = LOADED_MODELS[model_name]
     results = model.predict(
         source=image_path,
-        conf=0.05,
+        conf=0.01,
         iou=0.45,
         imgsz=640,
         verbose=False,
@@ -246,7 +252,7 @@ def run_dual_inference(
 
     results_projection1 = model.predict(
         source=image_path_1,
-        conf=0.05,
+        conf=0.01,
         iou=0.45,
         imgsz=640,
         verbose=False,
@@ -255,7 +261,7 @@ def run_dual_inference(
 
     results_projection2 = model.predict(
         source=image_path_2,
-        conf=0.05,
+        conf=0.01,
         iou=0.45,
         imgsz=640,
         verbose=False,
@@ -270,6 +276,37 @@ def run_dual_inference(
     )
 
     return predictions_projection1 + predictions_projection2
+
+
+# Function to run inference on two images together using model_a and model_b separately, then combine results using model_u for improved predictions.
+def run_projection_pipeline(
+    projection1_path: str,
+    projection2_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    if "model_a" not in LOADED_MODELS:
+        raise ValueError("model_a is not loaded")
+    if "model_b" not in LOADED_MODELS:
+        raise ValueError("model_b is not loaded")
+    if "model_u" not in LOADED_MODELS:
+        raise ValueError("model_u is not loaded")
+
+    used_single_image = projection2_path is None
+    projection2_path = projection2_path or projection1_path
+
+    model_a_predictions = run_inference(projection1_path, model_name="model_a")
+    model_b_predictions = run_inference(projection2_path, model_name="model_b")
+    model_u_predictions = run_dual_inference(
+        projection1_path,
+        projection2_path,
+        model_name="model_u",
+    )
+
+    return {
+        "model_a": model_a_predictions,
+        "model_b": model_b_predictions,
+        "model_u": model_u_predictions,
+        "used_single_image": used_single_image,
+    }
 
 
 # Function to validate uploaded images by checking their file extensions and content types against allowed lists above
@@ -321,100 +358,175 @@ def health() -> Dict[str, Any]:
 
 
 # Endpoint to handle image uploads, model inference and return predictions
-# May not be needed because of /predict-with-visualization but can be used for testing and debugging
-@app.post("/predict-upload")
-async def predict_upload(image: UploadFile = File(...), model: Optional[str] = None):
-    filename = validate_uploaded_image(image)
-    save_path = UPLOAD_DIR / filename
+# Returns the filename, model used, and a note about whether one or two images were used for inference.
+# If only one image is uploaded, it will be reused for both projections.
+@app.post("/predict")
+async def predict(
+    projection1: UploadFile = File(...),
+    projection2: Optional[UploadFile] = File(None),
+):
+    filename1 = validate_uploaded_image(projection1)
+
+    if projection2 is not None and projection2.filename:
+        filename2 = validate_uploaded_image(projection2)
+    else:
+        filename2 = None
+        projection2 = None
+
+    save_path1 = UPLOAD_DIR / f"projection1_{filename1}"
+    save_path2 = UPLOAD_DIR / f"projection2_{filename2}" if filename2 else None
 
     try:
-        with save_path.open("wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
+        with save_path1.open("wb") as buffer:
+            shutil.copyfileobj(projection1.file, buffer)
+
+        if projection2 is not None and save_path2 is not None:
+            with save_path2.open("wb") as buffer:
+                shutil.copyfileobj(projection2.file, buffer)
 
         if not LOADED_MODELS:
             raise HTTPException(status_code=503, detail="No models loaded.")
 
-        model_name = model or "model_u"
-        predictions = run_inference(str(save_path), model_name=model_name)
+        results = run_projection_pipeline(
+            str(save_path1),
+            str(save_path2) if save_path2 else None,
+        )
 
         return {
-            "filename": filename,
-            "predictions": predictions,
-            "num_labels": len(predictions),
-            "model": model_name,
+            "projection1_filename": filename1,
+            "projection2_filename": filename2 or filename1,
+            "input_mode": "single_image" if filename2 is None else "two_images",
+            "results": {
+                "model_a": results["model_a"],
+                "model_b": results["model_b"],
+                "model_u": results["model_u"],
+            },
+            "note": (
+                "One image uploaded. The same image was reused for projection2."
+                if filename2 is None
+                else "Two images uploaded."
+            ),
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=503, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Inference failed for %s: %s", filename, e)
+        logger.exception("Prediction failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
         try:
-            if save_path.exists():
-                save_path.unlink()
+            if save_path1.exists():
+                save_path1.unlink()
+        except Exception:
+            pass
+
+        try:
+            if save_path2 and save_path2.exists():
+                save_path2.unlink()
         except Exception:
             pass
 
 
-# Endpoint to handle image uploads, model inference, and returning predictions along with the filename, model used, and a URL to the annotated image with bounding boxes drawn
+# Endpoint to handle image uploads, model inference
+# Return predictions along with the filename, model used, and a URL to the annotated image with bounding boxes drawn
 @app.post("/predict-with-visualization")
 async def predict_with_visualization(
-    image: UploadFile = File(...), model: Optional[str] = None
+    projection1: UploadFile = File(...),
+    projection2: Optional[UploadFile] = File(None),
 ):
-    filename = validate_uploaded_image(image)
-    save_path = UPLOAD_DIR / filename
+    filename1 = validate_uploaded_image(projection1)
+
+    if projection2 is not None and projection2.filename:
+        filename2 = validate_uploaded_image(projection2)
+    else:
+        filename2 = None
+        projection2 = None
+
+    save_path1 = UPLOAD_DIR / f"projection1_{filename1}"
+    save_path2 = UPLOAD_DIR / f"projection2_{filename2}" if filename2 else None
 
     try:
-        with save_path.open("wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
+        with save_path1.open("wb") as buffer:
+            shutil.copyfileobj(projection1.file, buffer)
+
+        if projection2 is not None and save_path2 is not None:
+            with save_path2.open("wb") as buffer:
+                shutil.copyfileobj(projection2.file, buffer)
 
         if not LOADED_MODELS:
             raise HTTPException(status_code=503, detail="No models loaded.")
 
-        model_name = model or "model_u"
+        results = run_projection_pipeline(
+            str(save_path1),
+            str(save_path2) if save_path2 else None,
+        )
 
-        if model_name not in LOADED_MODELS:
-            raise HTTPException(
-                status_code=400, detail=f"Model '{model_name}' not available"
-            )
+        projection2_source = str(save_path2) if save_path2 else str(save_path1)
 
-        model_instance = LOADED_MODELS[model_name]
-        results = model_instance.predict(
-            str(save_path),
-            conf=0.05,
-            iou=0.45,  # Set IOU threshold to help measure the overlap between predicted bounding boxes and ground truth boxes
+        annotated_images = {}
+
+        model_a_results = LOADED_MODELS["model_a"].predict(
+            source=str(save_path1),
+            conf=0.01,
+            iou=0.45,
             imgsz=640,
             verbose=False,
             device="cpu",
         )
-        annotated = results[0].plot()
+        model_a_output_name = f"annotated_model_a_{filename1}"
+        model_a_output_path = UPLOAD_DIR / model_a_output_name
+        cv2.imwrite(str(model_a_output_path), model_a_results[0].plot())
+        annotated_images["model_a"] = f"/temp_uploads/{model_a_output_name}"
 
-        output_name = f"annotated_{filename}"
-        output_path = UPLOAD_DIR / output_name
-        cv2.imwrite(str(output_path), annotated)
-
-        predictions = extract_predictions_from_yolo(results, model_name)
+        model_b_results = LOADED_MODELS["model_b"].predict(
+            source=projection2_source,
+            conf=0.01,
+            iou=0.45,
+            imgsz=640,
+            verbose=False,
+            device="cpu",
+        )
+        model_b_output_name = f"annotated_model_b_{filename2 or filename1}"
+        model_b_output_path = UPLOAD_DIR / model_b_output_name
+        cv2.imwrite(str(model_b_output_path), model_b_results[0].plot())
+        annotated_images["model_b"] = f"/temp_uploads/{model_b_output_name}"
 
         return {
-            "filename": filename,
-            "predictions": predictions,
-            "num_labels": len(predictions),
-            "annotated_image_url": f"/temp_uploads/{output_name}",
-            "model": model_name,
+            "projection1_filename": filename1,
+            "projection2_filename": filename2 or filename1,
+            "input_mode": "single_image" if filename2 is None else "two_images",
+            "results": {
+                "model_a": results["model_a"],
+                "model_b": results["model_b"],
+                "model_u": results["model_u"],
+            },
+            "annotated_images": annotated_images,
+            "note": (
+                "One image uploaded. The same image was reused for projection2."
+                if filename2 is None
+                else "Two images uploaded."
+            ),
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Visualization failed for %s: %s", filename, e)
+        logger.exception("Visualization failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
         try:
-            if save_path.exists():
-                save_path.unlink()
+            if save_path1.exists():
+                save_path1.unlink()
+        except Exception:
+            pass
+
+        try:
+            if save_path2 and save_path2.exists():
+                save_path2.unlink()
         except Exception:
             pass
 
@@ -434,22 +546,18 @@ async def predict_multiple_models(image: UploadFile = File(...)):
         if not LOADED_MODELS:
             raise HTTPException(status_code=503, detail="No models loaded.")
 
-        all_predictions: Dict[str, List[Dict[str, Any]]] = {}
-
-        for model_name in LOADED_MODELS:
-            try:
-                all_predictions[model_name] = run_inference(
-                    str(save_path), model_name=model_name
-                )
-            except Exception as e:
-                logger.warning("Model %s failed: %s", model_name, e)
-                all_predictions[model_name] = []
+        results = run_projection_pipeline(str(save_path))
 
         return {
             "filename": filename,
-            "models": all_predictions,
+            "projection1_filename": filename,
+            "projection2_filename": filename,
+            "results": results,
+            "note": "Single image reused for both projections.",
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
@@ -459,69 +567,5 @@ async def predict_multiple_models(image: UploadFile = File(...)):
         try:
             if save_path.exists():
                 save_path.unlink()
-        except Exception:
-            pass
-
-
-# Endpoint to handle multiple image uploads and run inference on all loaded models for each image.
-@app.post("/predict-all-projections")
-async def predict_all_projections(
-    projection1: UploadFile = File(...),
-    projection2: UploadFile = File(...),
-):
-    filename1 = validate_uploaded_image(projection1)
-    filename2 = validate_uploaded_image(projection2)
-
-    save_path1 = UPLOAD_DIR / f"projection1_{filename1}"
-    save_path2 = UPLOAD_DIR / f"projection2_{filename2}"
-
-    try:
-        with save_path1.open("wb") as buffer:
-            shutil.copyfileobj(projection1.file, buffer)
-
-        with save_path2.open("wb") as buffer:
-            shutil.copyfileobj(projection2.file, buffer)
-
-        if not LOADED_MODELS:
-            raise HTTPException(status_code=503, detail="No models loaded.")
-
-        if "model_a" not in LOADED_MODELS:
-            raise HTTPException(status_code=503, detail="model_a is not loaded.")
-        if "model_b" not in LOADED_MODELS:
-            raise HTTPException(status_code=503, detail="model_b is not loaded.")
-        if "model_u" not in LOADED_MODELS:
-            raise HTTPException(status_code=503, detail="model_u is not loaded.")
-
-        model_a_predictions = run_inference(str(save_path1), model_name="model_a")
-        model_b_predictions = run_inference(str(save_path2), model_name="model_b")
-        model_u_predictions = run_dual_inference(
-            str(save_path1), str(save_path2), model_name="model_u"
-        )
-
-        return {
-            "projection1_filename": filename1,
-            "projection2_filename": filename2,
-            "results": {
-                "model_a": model_a_predictions,
-                "model_b": model_b_predictions,
-                "model_u": model_u_predictions,
-            },
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Dual projection inference failed: %s", e)
-        raise HTTPException(status_code=500, detail=str(e)) from e
-    finally:
-        try:  # Clear uploaded files to save space and prevent clutter
-            if save_path1.exists():
-                save_path1.unlink()
-        except Exception:
-            pass
-
-        try:
-            if save_path2.exists():
-                save_path2.unlink()
         except Exception:
             pass
