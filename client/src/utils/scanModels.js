@@ -19,7 +19,7 @@ function formatModelSubtitle(key) {
     model_u: "Combined model output",
   };
 
-  return subtitles[key] || "AI model output";
+  return subtitles[key] || "AI Tool output";
 }
 
 // Function for normalizing predictions from various API response formats
@@ -81,9 +81,6 @@ export function splitApiResultIntoModels(apiResult) {
       ),
     ];
   }
-
-  // Handle case where API returns an array of models directly
-  // Returns an array of normalized model results
   if (Array.isArray(apiResult.models)) {
     return apiResult.models.map((model, index) =>
       normalizeModelResult(
